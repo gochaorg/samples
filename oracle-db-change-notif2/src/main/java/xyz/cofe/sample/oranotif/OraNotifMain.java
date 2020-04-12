@@ -8,6 +8,10 @@ import oracle.jdbc.dcn.DatabaseChangeListener;
 import oracle.jdbc.dcn.DatabaseChangeRegistration;
 
 import java.io.IOError;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URL;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -73,9 +77,39 @@ public class OraNotifMain {
      * @param commandLineArgs аргументы, см {@link #parseCommandLine(String[])}
      */
     public static void main(String[] commandLineArgs){
+        if( commandLineArgs!=null && (
+            commandLineArgs.length==1 &&
+            commandLineArgs[0].matches("/\\?|\\-\\?|(?i)\\-\\-?help")
+        ) || (commandLineArgs.length==0)
+        ){
+            showHelp();
+            return;
+        }
+
         OraNotifMain main = new OraNotifMain();
         main.parseCommandLine(commandLineArgs);
         main.run();
+    }
+
+    private static void showHelp(){
+        URL url = OraNotifMain.class.getResource("help.md");
+        if( url==null ){
+            System.out.println("help not found");
+            return;
+        }
+
+        try {
+            try( InputStream strm = url.openStream() ){
+                byte[] data = new byte[1024*64];
+                int readed = strm.read(data);
+                if( readed>0 ){
+                    String str = new String(data,0,readed,"utf-8");
+                    System.out.println(str);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -242,6 +276,12 @@ public class OraNotifMain {
                         sleepTimeout = Long.parseLong(args.remove(0));
                         sleepTimeout = sleepTimeout * timeUnitSuffix.get();
                     }
+                    break;
+                case "-useExecSrvc":
+                    if( !args.isEmpty() ){
+                        useExecutorService = Boolean.parseBoolean(args.remove(0));
+                    }
+                    break;
                 default:
                     throw new IllegalArgumentException("can't parse: "+arg0);
             }
