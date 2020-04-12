@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>xyz.cofe</groupId>
+    <artifactId>oracle-db-change-notif2</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>1.8</maven.compiler.source>
+    </properties>
+
+    <dependencies>
+        <!--
+        12.1.0.2 release of the Oracle JDBC Thin driver
+        -->
+
+        <!-- Certified with JDK7 and JDK 8; It contains the JDBC driver classes except classes for NLS support in Oracle Object and Collection types. -->
+        <dependency>
+            <groupId>oracle</groupId>
+            <artifactId>ojdbc7</artifactId>
+            <version>1</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/ora/ojdbc7.jar</systemPath>
+        </dependency>
+
+        <!-- (Refer MOS note DOC ID 2074693.1) - UCP classes for use with JDK 6 & JDK 7 -->
+        <dependency>
+            <groupId>oracle</groupId>
+            <artifactId>ucp</artifactId>
+            <version>1</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/ora/ucp.jar</systemPath>
+        </dependency>
+
+        <!-- Classes for NLS support -->
+        <dependency>
+            <groupId>oracle</groupId>
+            <artifactId>orai18n</artifactId>
+            <version>1</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/ora/orai18n.jar</systemPath>
+        </dependency>
+
+        <!-- Classes to support standard JDBC 4.x java.sql.SQLXML interface (Java SE 6 & Java SE 7). -->
+        <dependency>
+            <groupId>oracle</groupId>
+            <artifactId>xdb6</artifactId>
+            <version>1</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/ora/xdb6.jar</systemPath>
+        </dependency>
+
+        <!-- Java APIs for subscribing to RAC events via ONS; simplefan policy and javadoc -->
+        <dependency>
+            <groupId>oracle</groupId>
+            <artifactId>simplefan</artifactId>
+            <version>1</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/ora/simplefan.jar</systemPath>
+        </dependency>
+
+        <!-- for use by the pure Java client-side Oracle Notification Services (ONS) daemon -->
+        <dependency>
+            <groupId>oracle</groupId>
+            <artifactId>ons</artifactId>
+            <version>1</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/ora/ons.jar</systemPath>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>5.6.1</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.0</version>
+                <configuration>
+                    <release>8</release>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>appassembler-maven-plugin</artifactId>
+                <version>1.10</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>assemble</goal>
+                        </goals>
+                        <configuration>
+                            <programs>
+                                <program>
+                                    <mainClass>xyz.cofe.sample.oranotif.OraNotifMain</mainClass>
+                                    <id>ora-notif-listener</id>
+                                </program>
+                            </programs>
+                            <repositoryLayout>flat</repositoryLayout>
+                            <useWildcardClassPath>true</useWildcardClassPath>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.2.0</version>
+                <configuration>
+                    <descriptors>
+                        <descriptor>src/main/assembly/src.xml</descriptor>
+                    </descriptors>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

@@ -133,7 +133,7 @@ public class MainFrame extends javax.swing.JFrame {
     }
     
     private String getJdbcURL(){
-        return "jdbc:oracle:thin:@"+oracleConnectPanel1.getHost()+":"+oracleConnectPanel1.getPort()+":"+oracleConnectPanel1.getSid();
+        return "jdbc:oracle:thin:@"+oracleConnectPanel1.getHost()+":"+oracleConnectPanel1.getPort()+"/"+oracleConnectPanel1.getSid();
     }
     
     private final Object connectSync = new Object();
