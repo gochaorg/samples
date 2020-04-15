@@ -2,7 +2,7 @@
 ===============================================
 
 * [Сама презентация](https://github.com/gochaorg/samples/blob/master/oracle-db-change-notif2/doc/pres.pdf)
-* [Исходный код nen :)](https://github.com/gochaorg/samples/tree/master/oracle-db-change-notif2)
+* [Исходный код тут :)](https://github.com/gochaorg/samples/tree/master/oracle-db-change-notif2)
 
 Ресурсы / ссылки
 
@@ -25,4 +25,23 @@
 * Система сборки maven 3.6
 * [Bellsoft JDK 14 (подойдет и 8)](https://bell-sw.com/pages/java-14/)
 
-Чтоб восспроизвести пример необходимо выполнить следующие шаги
+Чтоб воспроизвести пример необходимо выполнить следующие шаги
+
+1. Иметь предустановленную СУБД, самый легкий путь - поставить под linux + docker
+2. Иметь средства разработки (jdk, maven, idea)
+3. Запустить контейнер oracle docker, см команду ниже
+4. Создать пользователя в СУБД
+
+### Команда запуска контейнера oracle
+
+Кратная команда
+
+```
+docker run --name=ora1 -p 1521:1521 -d -it store/oracle/database-enterprise:12.2.0.1 
+```
+
+Полная команда
+
+```bash
+docker run --name=ora1 --hostname=1581b47a47ab --user=oracle --env="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" --env="ORACLE_HOME=/u01/app/oracle/product/12.2.0/dbhome_1" --env="ORACLE_SID=ORCL" --volume="/ORCL" -p 1521:1521 --restart=no --detach=true -t store/oracle/database-enterprise:12.2.0.1 /bin/sh -c '/bin/bash /home/oracle/setup/dockerInit.sh
+```
