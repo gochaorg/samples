@@ -19,5 +19,10 @@
 
 Пример демонстрировался в следующих условиях
 
-* ОС - Linux - Ubuntu 18 (ядро 5.3.0-28-generic)
-* База данных Oracle 12c в контейнере docker (https://hub.docker.com/_/oracle-database-enterprise-edition)
+* ОС - Linux - Ubuntu 18
+* База данных [Oracle 12c в контейнере docker](https://hub.docker.com/_/oracle-database-enterprise-edition)
+* Среда разработки [idea community](https://www.jetbrains.com/ru-ru/idea/)
+* Система сборки maven 3.6
+* [Bellsoft JDK 14 (подойдет и 8)](https://bell-sw.com/pages/java-14/)
+
+Чтоб восспроизвести пример необходимо выполнить следующие шаги
