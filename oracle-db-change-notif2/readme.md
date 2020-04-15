@@ -24,6 +24,7 @@
 * Среда разработки [idea community](https://www.jetbrains.com/ru-ru/idea/)
 * Система сборки maven 3.6
 * [Bellsoft JDK 14 (подойдет и 8)](https://bell-sw.com/pages/java-14/)
+* Клиент oracle, подойдет [Oracle SQL Developer](https://www.oracle.com/tools/downloads/sqldev-v192-downloads.html)
 
 Чтоб воспроизвести пример необходимо выполнить следующие шаги
 
@@ -47,4 +48,42 @@ docker run --name=ora1 -p 1521:1521 -d -it store/oracle/database-enterprise:12.2
 
 ```bash
 docker run --name=ora1 --hostname=1581b47a47ab --user=oracle --env="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" --env="ORACLE_HOME=/u01/app/oracle/product/12.2.0/dbhome_1" --env="ORACLE_SID=ORCL" --volume="/ORCL" -p 1521:1521 --restart=no --detach=true -t store/oracle/database-enterprise:12.2.0.1 /bin/sh -c '/bin/bash /home/oracle/setup/dockerInit.sh
+```
+### Комментарий к п 5,7
+
+Для создания пользователя в СУБД, необходимо присоединиться к самой СУБД и выполнить указанные скрипты.
+Для этого хорошо бы иметь клиента Oracle, но можно и без него, для этого можно в командной строке присоединиться к запущенному контейнеру и выполнить команды там.
+
+Примерно так это должно выглядеть:
+
+**Шаг первый, сменить пароль пользователя sys**
+
+```bash
+docker exec -it ora1 bash
+sqlplus / as sysdba
+alter user sys identified by <new-sys-password>;
+exit
+exit
+```
+
+**Шаг второй, создать пользователя TESTNOTIFY**
+Сам SQL скрипт доступен по ссылке выше
+
+```bash
+docker exec -it ora1 bash
+sqlplus sys/<new-sys-password>
+<Копируем и вставляем скрипт>;
+exit
+exit
+```
+
+**Шаг третий, создать первоначальные данные**
+Сам SQL скрипт доступен по ссылке выше
+
+```bash
+docker exec -it ora1 bash
+sqlplus TESTNOTIFY/TESTNOTIFY
+<Копируем и вставляем скрипт>;
+exit
+exit
 ```
