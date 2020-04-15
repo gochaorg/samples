@@ -30,7 +30,10 @@
 1. Иметь предустановленную СУБД, самый легкий путь - поставить под linux + docker
 2. Иметь средства разработки (jdk, maven, idea)
 3. Запустить контейнер oracle docker, см команду ниже
-4. Создать пользователя в СУБД
+4. [Создать пользователя в СУБД](https://github.com/gochaorg/samples/blob/master/oracle-db-change-notif2/src/main/resources/create_user.sql)
+5. [От имени созданного пользователя создать таблицу и первоначальные данные](https://github.com/gochaorg/samples/blob/master/oracle-db-change-notif2/src/main/resources/create_table.sql), комментарии см ниже
+6. Открыть проект в idea и запустить [тест](https://github.com/gochaorg/samples/blob/master/oracle-db-change-notif2/src/test/java/xyz/cofe/sample/oranotif/OraNotifMainTest.java)
+7. Изменить данные в исходной таблице ORACLE, комментарии см ниже
 
 ### Команда запуска контейнера oracle
 
