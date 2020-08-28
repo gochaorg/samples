@@ -1,0 +1,6 @@
+server:
+  port: 8081
+
+spring:
+  resources:
+    static-locations: file:/home/user/code/samples/zuul-push/ws-test/src/main/resources/static
