@@ -291,14 +291,39 @@ settings.xml
 Изменения
 
 * Появились файлы с суфиксом **094917-3**
-* Файлы с суфиксом **090345-1** удалены, т.к. текущее ограничение в репозитории - 2 уникальных snapshot артифакта
+* Файлы с суфиксом **090345-1** удалены, т.к. текущее ограничение в репозитории (на сервере jfrog artifactory) - 2 уникальных snapshot артифакта
 
 ### Запуск зависимого проекта
+
+<div style="float:right; background-color: #ffee88; color: #000000; padding: 1mm; min-width: 50mm; max-width: 80mm; margin-left: 5mm">
+<b>updatePolicy</b> - указывается для конкретной секции 
+<code style="color: #000"> 
+  &lt;repository&gt;/&lt;snapshot&gt; 
+</code>
+или 
+<code style="color: #000"> 
+  &lt;repository&gt;/&lt;release&gt;
+</code>.
+
+<br>
+<br>
+
+
+значение <b>interval:<i>XXX</i></b> - как часто обновлять зависимости с сервера в минутах.
+
+<b>always</b> - обновлять при каждом азапуске
+
+<b>daily</b> - ежедневно
+
+<b>never</b> - никогда
+
+</div>
 
 Согласно настройки `updatePolicy` для `snapshot` репозитория, 
 то при очередном запуске `mvn` будет скачен акутальные jar файл.
 
 Для примера в `pom.xml` зависимого проекта сейчас указано так:
+
 
 ```xml
 <repository>
@@ -311,6 +336,8 @@ settings.xml
     <url>http://repo-server-ip-or-dns:8081/artifactory/repo-name</url>
 </repository>
 ```
+
+<div style="clear: both"></div>
 
 Запуск
 
