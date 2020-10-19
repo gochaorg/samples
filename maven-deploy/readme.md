@@ -295,29 +295,15 @@ settings.xml
 
 ### Запуск зависимого проекта
 
-<div style="float:right; background-color: #ffee88; color: #000000; padding: 1mm; min-width: 50mm; max-width: 80mm; margin-left: 5mm">
-<b>updatePolicy</b> - указывается для конкретной секции 
-<code style="color: #000"> 
-  &lt;repository&gt;/&lt;snapshot&gt; 
-</code>
-или 
-<code style="color: #000"> 
-  &lt;repository&gt;/&lt;release&gt;
-</code>.
+    updatePolicy - указывается для конкретной секции 
+        <repository>/<snapshot> 
+        или 
+        <repository>/<release>
 
-<br>
-<br>
-
-
-значение <b>interval:<i>XXX</i></b> - как часто обновлять зависимости с сервера в минутах.
-
-<b>always</b> - обновлять при каждом азапуске
-
-<b>daily</b> - ежедневно
-
-<b>never</b> - никогда
-
-</div>
+    значение interval:XXX - как часто обновлять зависимости с сервера в минутах.
+    always - обновлять при каждом азапуске
+    daily - ежедневно
+    never - никогда
 
 Согласно настройки `updatePolicy` для `snapshot` репозитория, 
 то при очередном запуске `mvn` будет скачен акутальные jar файл.
