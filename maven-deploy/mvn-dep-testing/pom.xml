@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>xyz.cofe.example</groupId>
+    <artifactId>mvn-dep-testing</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>1.8</maven.compiler.source>
+
+        <timestamp>${maven.build.timestamp}</timestamp>
+        <maven.build.timestamp.format>yyyy-MM-dd HH:mm:ss</maven.build.timestamp.format>
+    </properties>
+
+<!--    Настройки репозиториев, если надо переопределить их, то раскомментируем и вписываем свои репы -->
+    <repositories>
+<!--        <repository>-->
+<!--            <snapshots>-->
+<!--                <enabled>false</enabled>-->
+<!--            </snapshots>-->
+<!--            <releases>-->
+<!--                <enabled>true</enabled>-->
+<!--                <updatePolicy>daily</updatePolicy>-->
+<!--            </releases>-->
+<!--            <id>assets-releases</id>-->
+<!--            <name>libs-release</name>-->
+<!--            <url>http://10.1.18.18:8081/artifactory/assets</url>-->
+<!--        </repository>-->
+        <repository>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>always</updatePolicy>
+            </snapshots>
+            <id>assets-snapshots</id>
+            <name>libs-snapshot</name>
+            <url>http://10.1.18.18:8081/artifactory/assets</url>
+        </repository>
+<!--        <repository>-->
+<!--            <snapshots>-->
+<!--                <enabled>false</enabled>-->
+<!--            </snapshots>-->
+<!--            <id>maven-central</id>-->
+<!--            <name>central maven repo</name>-->
+<!--            <url>http://10.1.18.18:8082/artifactory/maven-central</url>-->
+<!--        </repository>-->
+    </repositories>
+
+    <!-- Указываем репозитории в которые будем производить deploy -->
+    <distributionManagement>
+        <repository>
+            <id>assets-releases</id>
+            <name>libs-release</name>
+            <url>http://10.1.18.18:8081/artifactory/assets</url>
+        </repository>
+        <snapshotRepository>
+            <id>assets-snapshots</id>
+            <name>libs-snapshot</name>
+            <url>http://10.1.18.18:8081/artifactory/assets</url>
+        </snapshotRepository>
+    </distributionManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>xyz.cofe.example</groupId>
+            <artifactId>mvn-deploy-testing</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>${basedir}/src/main/resources</directory>
+                <includes>
+                    <include>**/*.properties</include>
+                </includes>
+                <filtering>true</filtering>
+            </resource>
+            <resource>
+                <directory>${basedir}/src/main/resources</directory>
+                <excludes>
+                    <exclude>**/*.properties</exclude>
+                </excludes>
+                <filtering>false</filtering>
+            </resource>
+        </resources>
+
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.0.0</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <mainClass>xyz.cofe.example.mvn.dep.DepMain</mainClass>
+                    <arguments>
+                        <argument>argument1</argument>
+                    </arguments>
+                    <systemProperties>
+                        <systemProperty>
+                            <key>myproperty</key>
+                            <value>myvalue</value>
+                        </systemProperty>
+                    </systemProperties>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

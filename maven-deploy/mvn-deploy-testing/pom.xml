@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>xyz.cofe.example</groupId>
+    <artifactId>mvn-deploy-testing</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <properties>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!-- Переменная timestamp будет содержать дату/время сборки -->
+        <timestamp>${maven.build.timestamp}</timestamp>
+
+        <!-- Дата/время сборки будет указана в этом формате -->
+        <maven.build.timestamp.format>yyyy-MM-dd HH:mm:ss</maven.build.timestamp.format>
+    </properties>
+
+    <!-- Указываем репозитории в которые будем производить deploy -->
+<!--    <distributionManagement>-->
+<!--        <repository>-->
+<!--            <id>assets-releases</id>-->
+<!--            <name>libs-release</name>-->
+<!--            <url>http://10.1.18.18:8081/artifactory/assets</url>-->
+<!--        </repository>-->
+<!--        <snapshotRepository>-->
+<!--            <id>assets-snapshots</id>-->
+<!--            <name>libs-snapshot</name>-->
+<!--            <url>http://10.1.18.18:8081/artifactory/assets</url>-->
+<!--        </snapshotRepository>-->
+<!--    </distributionManagement>-->
+    <distributionManagement>
+        <repository>
+            <id>assets-releases</id>
+            <name>libs-release</name>
+            <url>http://10.1.18.36:8081/repository/assets</url>
+        </repository>
+        <snapshotRepository>
+            <id>assets-snapshots</id>
+            <name>libs-snapshot</name>
+            <url>http://10.1.18.36:8081/repository/assets</url>
+        </snapshotRepository>
+    </distributionManagement>
+
+    <build>
+        <!-- Указываем ресурсы которые будут добавлены при сборке -->
+        <resources>
+            <!-- Данный ресурс будет включать себя значения переменных/свойств maven -->
+            <resource>
+                <directory>${basedir}/src/main/resources</directory>
+                <includes>
+                    <include>**/*.properties</include>
+                </includes>
+                <filtering>true</filtering>
+            </resource>
+            <!-- Данный ресурс будет включать себя файлы как есть, кроме указанных выше -->
+            <resource>
+                <directory>${basedir}/src/main/resources</directory>
+                <excludes>
+                    <exclude>**/*.properties</exclude>
+                </excludes>
+                <filtering>false</filtering>
+            </resource>
+        </resources>
+
+        <plugins>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-site-plugin</artifactId>
+                <version>3.7.1</version>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-project-info-reports-plugin</artifactId>
+                <version>3.0.0</version>
+            </plugin>
+
+        </plugins>
+    </build>
+
+</project>

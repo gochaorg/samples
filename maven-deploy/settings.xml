@@ -1,0 +1,98 @@
+<settings>
+  <!-- 
+  Расположение локального репозитория
+  OS_USERNAME - здесь логин пользователя ОС
+  
+  Значение можно не указывать, будет использоваться по умолчанию
+  -->
+  <localRepository>C:\Users\OS_USERNAME\.m2\repository</localRepository>
+
+  <!-- Логины / пароли -->
+  <servers>
+    <server>
+      <username>artifactory-login</username>
+      <password>artifactory-password</password>
+      <id>repo-server-releases-id</id>
+    </server>
+    <server>
+      <username>artifactory-login</username>
+      <password>artifactory-password</password>
+      <id>repo-server-snapshots-id</id>
+    </server>
+  </servers>
+  
+  <!-- Настройки профилей -->
+  <profiles>
+  
+    <!-- Профиль profile-id-artifactory - содержин настройки, репозиториев с которых происходит download -->
+    <profile>
+      <id>profile-id-artifactory</id>
+	  
+      <repositories>
+        <repository>
+          <snapshots>
+            <enabled>false</enabled>
+          </snapshots>
+          <releases>
+            <enabled>true</enabled>
+            <updatePolicy>daily</updatePolicy>
+          </releases>
+          <id>repo-server-releases-id</id>
+          <name>libs-release</name>
+          <url>http://repo-server-ip-or-dns:8081/artifactory/repo-name</url>
+        </repository>
+        <repository>
+          <snapshots>
+            <enabled>true</enabled>
+            <updatePolicy>interval:2</updatePolicy>
+          </snapshots>
+          <id>repo-server-snapshots-id</id>
+          <name>libs-snapshot</name>
+          <url>http://repo-server-ip-or-dns:8081/artifactory/repo-name</url>
+        </repository>
+        <repository>
+          <snapshots>
+            <enabled>false</enabled>
+          </snapshots>
+          <id>maven-central</id>
+          <name>central maven repo</name>
+		  <url>http://repo-server-ip-or-dns:8082/artifactory/maven-central</url>
+        </repository>
+      </repositories>
+	  
+      <pluginRepositories>
+
+        <pluginRepository>
+          <snapshots>
+            <enabled>false</enabled>
+          </snapshots>
+          <id>repo-server-releases-id</id>
+          <name>libs-release</name>
+          <url>http://repo-server-ip-or-dns:8081/artifactory/libs-release</url>
+        </pluginRepository>
+
+        <pluginRepository>
+          <snapshots />
+          <id>repo-server-snapshots-id</id>
+          <name>libs-snapshot</name>
+          <url>http://repo-server-ip-or-dns:8081/artifactory/libs-snapshot</url>
+        </pluginRepository>
+
+        <pluginRepository>
+          <snapshots>
+            <enabled>false</enabled>
+          </snapshots>
+          <id>maven-central</id>
+          <name>central maven repo</name>
+		  <url>http://repo-server-ip-or-dns:8082/artifactory/maven-central</url>
+        </pluginRepository>
+
+      </pluginRepositories>
+    </profile>
+  </profiles>
+  
+  <!-- Список активных профилей -->
+  <activeProfiles>
+    <activeProfile>profile-id-artifactory</activeProfile>
+  </activeProfiles>
+</settings>
