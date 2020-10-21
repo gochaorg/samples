@@ -25,14 +25,18 @@ public class SampleTest {
     public void summ(){
         System.out.println("summ with random bug");
 
-        int a = random.nextInt(10)+1;
-        int b = random.nextInt(10)+1;
-        int expect = a + b;
-        int result = summ(a,b);
-        boolean matched = expect == result;
+        for( int i=0; i<20; i++ ) {
+            System.out.println("cycle "+i);
 
-        String message = "summ( "+a+", "+b+" ) => { expect="+expect+" result="+result+" }";
-        System.out.println(message);
-        assertTrue( matched, message );
+            int a = random.nextInt(10) + 1;
+            int b = random.nextInt(10) + 1;
+            int expect = a + b;
+            int result = summ(a, b);
+            boolean matched = expect == result;
+
+            String message = "summ( " + a + ", " + b + " ) => { expect=" + expect + " result=" + result + " }";
+            System.out.println(message);
+            assertTrue(matched, message);
+        }
     }
 }
