@@ -13,6 +13,16 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <junit.version>5.4.0</junit.version>
+        <test.filtering.files>**/*.properties</test.filtering.files>
+
+        <test.mssql.server>localhost</test.mssql.server>
+        <test.mssql.port>1433</test.mssql.port>
+        <test.mssql.db>junit</test.mssql.db>
+        <test.mssql.appname>junit-app1</test.mssql.appname>
+
+        <test.connect.url>jdbc:sqlserver://${test.mssql.server}:${test.mssql.port};databaseName=${test.mssql.db};applicationName=${test.mssql.appname}</test.connect.url>
+        <test.connect.username>junit_usr1</test.connect.username>
+        <test.connect.password>340$Uuxwp7Mcxo7Khy</test.connect.password>
     </properties>
 
     <dependencies>
@@ -22,9 +32,32 @@
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>8.2.2.jre8</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
+        <testResources>
+            <testResource>
+                <directory>src/test/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>${test.filtering.files}</include>
+                </includes>
+            </testResource>
+            <testResource>
+                <directory>src/test/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>${test.filtering.files}</exclude>
+                </excludes>
+            </testResource>
+        </testResources>
+
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -39,7 +72,7 @@
                 </dependencies>
                 <configuration>
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
-                    <groups>Stable</groups>
+                    <groups>MSSQL</groups>
 <!--                    <groups>Stable, UnStable</groups>-->
                 </configuration>
             </plugin>

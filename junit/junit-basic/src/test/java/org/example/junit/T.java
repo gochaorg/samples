@@ -15,4 +15,9 @@ public interface T {
      * Тест не требует предварительной настройки
      */
     final static String Atomic = "Atomic";
+
+    /**
+     * Тестирование MSSQL
+     */
+    final static String MSSQL = "MSSQL";
 }
