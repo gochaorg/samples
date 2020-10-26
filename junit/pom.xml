@@ -12,6 +12,7 @@
     <modules>
         <module>junit-basic</module>
         <module>junit-spring</module>
+        <module>junit-spring2</module>
     </modules>
 
 </project>
