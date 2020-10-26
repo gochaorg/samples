@@ -10,7 +10,10 @@ import java.sql.*;
 import java.util.Properties;
 
 public class DbTest {
+    // здесь будут содержаться параметры подключения
     private static final Properties connectRequisites;
+
+    // Данный кусок будет выполнен один раз
     static {
         connectRequisites = new Properties();
         URL u = DbTest.class.getResource("/connect.properties");
@@ -24,6 +27,7 @@ public class DbTest {
         }
     }
 
+    // Таким простым методом устанавливаем подключение
     private static Connection connect(){
         try {
             String url = connectRequisites.getProperty("url");
@@ -43,6 +47,7 @@ public class DbTest {
     private static Connection connection;
     private static Sql.Executor sql;
 
+    // Данный метод будет выполнен один раз, перед началом тестов
     @BeforeAll
     public synchronized static void openConnection(){
         if( connection==null ) {
@@ -51,6 +56,7 @@ public class DbTest {
         }
     }
 
+    // Данный метод будет выполнен один раз, после всех тестов
     @AfterAll
     public synchronized static void closeConnection(){
         if( connection!=null ){
