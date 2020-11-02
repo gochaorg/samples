@@ -3,4 +3,10 @@ eclipse-jdt-tst
 fernflower
 jd
 soot
-/oracle-db-change-notif/dist/
+/oracle-db-change-notif/dist/*/.idea
+*/target
+*/*/target
+*/*.iml
+*/.idea
+*/*/.idea
+*/*/target
