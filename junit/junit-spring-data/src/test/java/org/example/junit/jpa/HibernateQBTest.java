@@ -1,5 +1,6 @@
 package org.example.junit.jpa;
 
+import org.example.junit.jpa.data.Billionaires;
 import org.example.junit.jpa.data.BillionairesRepo;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -8,6 +9,10 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import javax.persistence.EntityManager;
+import javax.persistence.TypedQuery;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Root;
 import java.text.SimpleDateFormat;
 
 @ExtendWith(SpringExtension.class)
@@ -41,5 +46,27 @@ public class HibernateQBTest {
                 );
             });
         }
+    }
+
+    @Test
+    public void test02(){
+        System.out.println("run test02");
+        System.out.println("==================");
+
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+
+        CriteriaQuery<Billionaires> bQuery = cb.createQuery(Billionaires.class);
+        Root<Billionaires> bRoot = bQuery.from(Billionaires.class);
+        bQuery.select(bRoot);
+
+        TypedQuery<Billionaires> tQuery = em.createQuery(bQuery);
+        tQuery.getResultList().forEach( row ->
+            System.out.println(
+                "id="+row.getId()+
+                    " f.name="+row.getFirstName()+
+                    " l.name="+row.getLastName()+
+                    " career="+row.getCareer()
+            )
+        );
     }
 }
