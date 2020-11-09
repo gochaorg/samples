@@ -13,6 +13,7 @@
         <module>junit-basic</module>
         <module>junit-spring</module>
         <module>junit-spring2</module>
+        <module>junit-spring-data</module>
     </modules>
 
 </project>
