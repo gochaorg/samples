@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>spring-ha</artifactId>
+        <groupId>org.example</groupId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>wmi</artifactId>
+
+    <properties>
+        <groovy.version>3.0.6</groovy.version>
+        <junit.version>5.4.0</junit.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>xyz.cofe</groupId>
+            <artifactId>ecolls</artifactId>
+            <version>1.7</version>
+        </dependency>
+        <dependency>
+            <groupId>xyz.cofe</groupId>
+            <artifactId>iofun</artifactId>
+            <version>1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.groovy.modules.scriptom</groupId>
+            <artifactId>scriptom</artifactId>
+            <version>1.6.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>net.sf.jacob-project</groupId>
+                    <artifactId>jacob</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>net.sf.jacob-project</groupId>
+            <artifactId>jacob</artifactId>
+            <version>1.20</version>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.groovy.modules.scriptom</groupId>
+            <artifactId>scriptom-scripting-tlb</artifactId>
+            <version>1.6.0</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.codehaus.groovy.modules.scriptom/scriptom-wbem-tlb -->
+        <dependency>
+            <groupId>org.codehaus.groovy.modules.scriptom</groupId>
+            <artifactId>scriptom-wbem-tlb</artifactId>
+            <version>1.6.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.0.0-M5</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.junit.jupiter</groupId>
+                        <artifactId>junit-jupiter-engine</artifactId>
+                        <version>${junit.version}</version>
+                        <!--                        <scope>test</scope>-->
+                    </dependency>
+                </dependencies>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>groovy</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+        </profile>
+    </profiles>
+</project>
