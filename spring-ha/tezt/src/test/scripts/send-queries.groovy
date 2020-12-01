@@ -1,6 +1,6 @@
 import groovy.json.JsonSlurper
 import okhttp3.*
-import org.example.ha.tezt.TimedNumSamples
+import org.example.stat.TimedNumSamples
 import xyz.cofe.text.FullDecFormat
 
 import java.util.concurrent.ConcurrentHashMap

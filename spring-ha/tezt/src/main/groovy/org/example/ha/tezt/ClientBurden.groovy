@@ -1,35 +1,76 @@
 package org.example.ha.tezt
 
-import groovy.transform.TypeChecked
+
 import okhttp3.Request
 import okhttp3.Response
+import org.example.stat.SequenceNumSamples
 
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ThreadLocalRandom
+
+import org.example.okhttp.HttpClient
 
 /**
  * Нагрузка одного клиента
  */
 //@TypeChecked
 class ClientBurden implements HttpClient {
-    public static enum State {
-        Prepare,
-        Started,
-        Finished,
-        Sleep,
-        Request,
-        Collect,
-    }
-
+    /**
+     * Время начала (System.currentTimeMillis())
+     */
     volatile long started;
+
+    /**
+     * Время завершения (System.currentTimeMillis())
+     */
     volatile long finished;
+
+    /**
+     * Максимальная продолжительность (мс) нагрузки
+     */
     volatile long maxDuration = 1000L * 60L
+
+    /**
+     * Минимальное время (мс) паузы между запросами
+     */
     volatile long sleepMin = 500;
+
+    /**
+     * Максимальное время (мс) паузы между запросами
+     */
     volatile long sleepMax = 1500;
 
     final ThreadLocalRandom random = ThreadLocalRandom.current()
-    final Map<State,SequenceNumSamples> statesDuration = new ConcurrentHashMap<>()
 
+    /**
+     * Состояние процесса
+     */
+    public static enum State {
+        /** Подготовлено, но не запущено */
+        Prepare,
+
+        /** Запущен процесс */
+        Started,
+
+        /** Завершено */
+        Finished,
+
+        /** Пауза между запросами */
+        Sleep,
+
+        /** Посылка запроса */
+        Request,
+
+        /** собр статистики запроса */
+        Collect,
+    }
+    final Map<State, SequenceNumSamples> statesDuration = new ConcurrentHashMap<>()
+
+    /**
+     * Получение списка запросов на момент времени runTime от начала (started)
+     * @param runTime время (мс) прошедшее с начала старта
+     * @return Запросы
+     */
     protected List<Request> clientRequestsAtTime( long runTime ){
         ArrayList<Request> requests = new ArrayList<>()
         return requests
@@ -37,9 +78,19 @@ class ClientBurden implements HttpClient {
 
     protected volatile State stateValue = State.Prepare
     protected volatile long lastStateChanged = 0
+
+    /**
+     * Возвращает текущее состояние
+     * @return текущее состояние
+     */
     State getState(){
         stateValue
     }
+
+    /**
+     * Указывает текущее состояние
+     * @param st текущее состояние
+     */
     void setState(State st){
         if( st==null )throw new IllegalArgumentException("st==null");
         synchronized (this){
@@ -55,6 +106,11 @@ class ClientBurden implements HttpClient {
         }
     }
 
+    /**
+     * Сбор статистики состояний
+     * @param st состояние
+     * @param durationMSec продолжительность
+     */
     void collectStateDuration( State st, long durationMSec ){
         if( st!=null && durationMSec>=0 ){
             statesDuration.
@@ -62,6 +118,9 @@ class ClientBurden implements HttpClient {
         }
     }
 
+    /**
+     * Код выполняемый в потоке
+     */
     final Runnable runnable = new Runnable() {
         @Override
         void run() {
@@ -120,6 +179,5 @@ class ClientBurden implements HttpClient {
     }
 
     protected void collect( Request request, Response response, long executionNano ){
-
     }
 }
