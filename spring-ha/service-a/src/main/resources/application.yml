@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: service-a
+
+eureka:
+  instance:
+    appname: service-a
+  client:
+    fetchRegistry: true
+    serviceUrl:
+      defaultZone: http://localhost:28000/eureka
+
+server:
+  port: 28100
+
+management:
+  endpoint:
+    shutdown:
+      enabled: true
+    info:
+      enabled: true
+  endpoints:
+    enabled-by-default: true

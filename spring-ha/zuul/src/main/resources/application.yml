@@ -1,0 +1,59 @@
+spring:
+  application:
+    name: zuul
+
+eureka:
+  instance:
+    appname: zuul
+  client:
+    fetchRegistry: true
+    serviceUrl:
+      defaultZone: http://localhost:28000/eureka
+
+server:
+  port: 28010
+
+management:
+  endpoint:
+    shutdown:
+      enabled: true
+    info:
+      enabled: true
+    startup:
+      enabled: true
+    beans:
+      enables: true
+  endpoints:
+    enabled-by-default: true
+    web:
+      exposure:
+        include: "*"
+
+ribbon:
+  # TODO разобраться нет ли побочного эффекта от этого параметра
+  ReadTimeout: 60000 # увеличил время ожидания отклика микросервича
+
+zuul:
+  sensitiveHeaders:
+    - Cookie
+    - Set-Cookie
+  routes:
+    service-a:
+      path: /api/sa/**
+#    sample-client1-a:
+#      path: /sc1/**
+#    data-business:
+#      path: /business/**
+#    data-admin:
+#      path: /admin/**
+#    data-meta:
+#      path: /meta/**
+#    data-logging:
+#      path: /logging/**
+
+service-a:
+  ribbon:
+    #listOfServers: example.com,google.com
+    NFLoadBalancerRuleClassName: org.example.ha.zuul.lb.MyWeightedResponseTimeRule
+#    NFLoadBalancerRuleClassName: com.netflix.loadbalancer.WeightedResponseTimeRule
+#    NFLoadBalancerRuleClassName: com.netflix.loadbalancer.RoundRobinRule

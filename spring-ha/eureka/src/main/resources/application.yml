@@ -1,0 +1,9 @@
+eureka:
+  instance:
+    hostname: localhost
+    appname: eureka
+  client:
+    registerWithEureka: false
+    fetchRegistry: false
+server:
+  port: 28000
