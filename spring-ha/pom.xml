@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.example</groupId>
+    <artifactId>spring-ha</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <modules>
+        <module>eureka</module>
+        <module>service-a</module>
+        <module>zuul</module>
+        <module>tezt</module>
+        <module>wmi</module>
+        <module>stat</module>
+        <module>eureka-api</module>
+        <module>ok-http-client</module>
+        <!--        <module>stat</module>-->
+    </modules>
+    <packaging>pom</packaging>
+
+    <properties>
+        <!-- Расположение репозиториев -->
+        <repo.release.url>http://10.1.18.18:8081/repository/assets</repo.release.url>
+        <repo.snapshot.url>http://10.1.18.18:8081/repository/assets</repo.snapshot.url>
+        <!--        <repo.release.url>dav:http://10.1.18.16:18080/dav</repo.release.url>-->
+        <!--        <repo.snapshot.url>dav:http://10.1.18.16:18080/dav</repo.snapshot.url>-->
+
+        <!-- Версия java -->
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>1.8</maven.compiler.source>
+
+        <!-- Кодировка исходников -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!-- версии библиотек -->
+        <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
+        <maven-surefire-plugin.version>3.0.0-M5</maven-surefire-plugin.version>
+        <h2.version>1.4.200</h2.version>
+        <hibernate.version>5.1.0.Final</hibernate.version>
+
+        <junit.version>5.4.0</junit.version>
+<!--        <junit.version>5.6.2</junit.version>-->
+
+        <jackson-core.version>2.11.1</jackson-core.version>
+        <jackson-databind.version>${jackson-core.version}</jackson-databind.version>
+        <jackson-annotations.version>${jackson-core.version}</jackson-annotations.version>
+        <spring.boot.version>2.2.6.RELEASE</spring.boot.version>
+        <java.version>1.8</java.version>
+        <maven-source-plugin.version>3.1.0</maven-source-plugin.version>
+        <maven-javadoc-plugin.version>3.1.1</maven-javadoc-plugin.version>
+
+        <groovy.version>3.0.6</groovy.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <!-- Import dependency management from Spring Boot -->
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring.boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <profiles>
+        <profile>
+            <id>groovy</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.codehaus.groovy</groupId>
+                    <artifactId>groovy</artifactId>
+                    <version>${groovy.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.codehaus.groovy</groupId>
+                    <artifactId>groovy-datetime</artifactId>
+                    <version>${groovy.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.codehaus.groovy</groupId>
+                    <artifactId>groovy-docgenerator</artifactId>
+                    <version>${groovy.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.codehaus.groovy</groupId>
+                    <artifactId>groovy-groovydoc</artifactId>
+                    <version>${groovy.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.codehaus.groovy</groupId>
+                    <artifactId>groovy-json</artifactId>
+                    <version>${groovy.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.codehaus.groovy</groupId>
+                    <artifactId>groovy-jsr223</artifactId>
+                    <version>${groovy.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.codehaus.groovy</groupId>
+                    <artifactId>groovy-macro</artifactId>
+                    <version>${groovy.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.codehaus.groovy</groupId>
+                    <artifactId>groovy-sql</artifactId>
+                    <version>${groovy.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.codehaus.groovy</groupId>
+                    <artifactId>groovy-swing</artifactId>
+                    <version>${groovy.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.codehaus.groovy</groupId>
+                    <artifactId>groovy-templates</artifactId>
+                    <version>${groovy.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.codehaus.groovy</groupId>
+                    <artifactId>groovy-xml</artifactId>
+                    <version>${groovy.version}</version>
+                </dependency>
+            </dependencies>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.gmavenplus</groupId>
+                        <artifactId>gmavenplus-plugin</artifactId>
+                        <version>1.11.0</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>addSources</goal>
+                                    <goal>addTestSources</goal>
+                                    <goal>generateStubs</goal>
+                                    <goal>compile</goal>
+                                    <goal>generateTestStubs</goal>
+                                    <goal>compileTests</goal>
+                                    <goal>removeStubs</goal>
+                                    <goal>removeTestStubs</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+            <activation>
+                <file>
+                    <exists>src/main/groovy</exists>
+                </file>
+            </activation>
+        </profile>
+    </profiles>
+
+</project>
