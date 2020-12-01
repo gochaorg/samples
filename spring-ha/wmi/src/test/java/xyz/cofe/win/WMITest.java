@@ -45,13 +45,16 @@ public class WMITest {
     @Test
     public void listTcpSockets(){
         WinAPI.run( winAPI -> {
-            WmiNamespaces.StandardCimv2.connect(winAPI, wmi -> {
-                MSFT_NetTCPConnection.list(wmi).forEach( conn -> {
+            WmiNamespaces.CIMV2.connect(winAPI, wmi->{
+            WmiNamespaces.StandardCimv2.connect(winAPI, stdWmi -> {
+                MSFT_NetTCPConnection.list(stdWmi).forEach( conn -> {
+                    Win32_Process proc = Win32_Process.get(wmi, conn.getOwningProcess());
                     System.out.println(
-                        "tcp: "+conn.getLocalAddress()+":"+conn.getLocalPort()+" -> "+conn.getRemoteAddress()+":"+conn.getRemotePort()
+                        "tcp: "+conn.getLocalAddress()+":"+conn.getLocalPort()+" -> "+conn.getRemoteAddress()+":"+conn.getRemotePort()+
+                        "  pid="+conn.getOwningProcess()+" name="+proc.getName()
                     );
-                    System.out.println("  proc="+conn.getOwningProcess());
                 });
+            });
             });
         });
     }

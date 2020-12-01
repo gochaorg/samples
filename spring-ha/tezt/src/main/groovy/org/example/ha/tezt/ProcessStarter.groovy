@@ -203,11 +203,17 @@ class ProcessStarter {
         observerThreads.toArray(new Thread[0])
     }
 
+    volatile long killObserverTimeout = 10000L
+    ProcessStarter killObserverTimeout(long timeout){
+        killObserverTimeout = timeout
+        this
+    }
+
     synchronized void detachObservers(){
         observerThreads.each {Thread th ->
             try {
                 th.interrupt()
-                long timeout = 1000L
+                long timeout = killObserverTimeout
                 long t0 = System.currentTimeMillis()
                 while (th.alive) {
                     th.interrupt()
@@ -216,8 +222,8 @@ class ProcessStarter {
                         th.stop()
                     }
                 }
-            } catch ( Throwable err ){
-                println "detachObservers err $err"
+            } catch ( Throwable ignore ){
+                //println "detachObservers err $err"
             }
         }
         observerThreads.clear()

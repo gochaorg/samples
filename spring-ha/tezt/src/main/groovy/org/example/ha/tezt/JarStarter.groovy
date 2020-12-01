@@ -1,8 +1,10 @@
 package org.example.ha.tezt
 
+import java.nio.charset.Charset
 import java.util.function.Consumer
 
 class JarStarter extends ProcessStarter {
+    //region override parent methods - return type
     @Override synchronized JarStarter start() {
         super.start()
         this
@@ -48,6 +50,32 @@ class JarStarter extends ProcessStarter {
         return this
     }
 
+    @Override
+    JarStarter checkOutputReady(boolean v) {
+        super.checkOutputReady(v)
+        this
+    }
+
+    @Override
+    JarStarter outputCharset(Charset cs) {
+        super.outputCharset(cs)
+        this
+    }
+
+    @Override
+    JarStarter outputCharset(String cs) {
+        super.outputCharset(cs)
+        this
+    }
+
+    @Override
+    JarStarter killObserverTimeout(long timeout) {
+        super.killObserverTimeout(timeout)
+        this
+    }
+    //endregion
+
+    //region javaExe : File
     File javaExe
     JarStarter javaExe(File v){
         setJavaExe(v)
@@ -57,7 +85,8 @@ class JarStarter extends ProcessStarter {
         setJavaExe(v?.toFile())
         this
     }
-
+    //endregion
+    //region jar : File
     File jar
     JarStarter jar(File v){
         setJar(v)
@@ -67,8 +96,13 @@ class JarStarter extends ProcessStarter {
         setJar(v?.toFile())
         this
     }
+    //endregion
 
+    //region systemProperties : Map<String,String>
     public final Map<String,String> systemProperties = [:]
+    //endregion
+
+    //region memoryMax
     public String memoryMax
     JarStarter memoryMaxBytes( long bytes ){
         memoryMax = bytes.toString()
@@ -86,7 +120,8 @@ class JarStarter extends ProcessStarter {
         memoryMax = gbytes.toString()+'g'
         this
     }
-
+    //endregion
+    //region build command
     @Override
     String getCommand() {
         File exe = getJavaExe()
@@ -113,4 +148,5 @@ class JarStarter extends ProcessStarter {
     void setCommand(String command) {
         throw new RuntimeException("property command read only")
     }
+    //endregion
 }
