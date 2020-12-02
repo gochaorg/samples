@@ -100,6 +100,22 @@ class JarStarter extends ProcessStarter {
 
     //region systemProperties : Map<String,String>
     public final Map<String,String> systemProperties = [:]
+    JarStarter sys( String propName, String propValue ){
+        if( propName==null )throw new IllegalArgumentException("propName==null");
+        if( propValue==null )throw new IllegalArgumentException("propValue==null");
+        systemProperties[propName] = propValue
+        this
+    }
+    JarStarter sys( String propName, int propValue ){
+        if( propName==null )throw new IllegalArgumentException("propName==null");
+        systemProperties[propName] = propValue.toString()
+        this
+    }
+    JarStarter sys( String propName, boolean propValue ){
+        if( propName==null )throw new IllegalArgumentException("propName==null");
+        systemProperties[propName] = propValue.toString()
+        this
+    }
     //endregion
 
     //region memoryMax

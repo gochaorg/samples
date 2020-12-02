@@ -14,7 +14,10 @@ import xyz.cofe.win.wmi.MSFT_NetTCPConnection
 import xyz.cofe.win.wmi.Win32_Process
 import xyz.cofe.win.wmi.WmiNamespaces
 
+import java.time.Duration
+import java.time.Instant
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.regex.Pattern
 
 //region определение переменных eurekaJar, serviceJar, zuulJar::xyz.cofe.io.fs.File
@@ -117,56 +120,48 @@ WinAPI.run({winapi ->
 })
 //endregion
 
-//outputTriggers: [(~/(?is)Started +Eureka/): {
-//    println("catched $it")
-//}]).start()
+serviceCounter = new AtomicInteger(0)
+
+def serviceStarter( int port, Closure started=null ){
+    new JarStarter()
+        .javaExe(javaExe)
+        .jar(serviceJar)
+        .sys('server.port', port)
+        .output( h -> h.trigger( ~/(?is)Started Service.*JVM running/ ) {
+            if( started )started()
+        })
+}
 
 println "start eureka"
-def proc = new JarStarter()
+def startEureka = new JarStarter()
     .javaExe(javaExe)
     .jar(eurekaJar)
-    .observersAsDaemon(false)
+    .observersAsDaemon(true)
     .output( h -> {
         h.trigger( ~/(?is)Started +Eureka/ ) { String line, JarStarter starter ->
+            serviceCounter.incrementAndGet()
             println("eureka started")
+
+            [ 28100, 28101 ].each {port ->
+                println "starting service $port"
+                serviceStarter(port, {
+                    serviceCounter.incrementAndGet()
+                    println "service $port started"
+                }).start()
+            }
+
             starter.detach()
         }
     }).start()
 
-//proc.process.waitFor(20, TimeUnit.SECONDS)
-println "finished"
+int waitServiceCount = 3
+println "wait for starting $waitServiceCount services"
 
-//println "starting eureka"
-//eurekaProc = "\"${javaExe}\" -jar \"${eurekaJar}\"".execute()
-//
-//StringBuilder eurekaOutput = new StringBuilder()
-//def checkStarted = {
-//    boolean started = eurekaOutput.toString().contains("Started Eureka")
-//    if( started ){
-//        println "started!"
-//    }
-//}
-//eurekaProc.consumeProcessOutputStream(new Appendable() {
-//    @Override
-//    Appendable append(CharSequence csq) throws IOException {
-//        eurekaOutput.append(csq)
-//        checkStarted()
-//        return this
-//    }
-//
-//    @Override
-//    Appendable append(CharSequence csq, int start, int end) throws IOException {
-//        eurekaOutput.append(csq,start,end)
-//        checkStarted()
-//        return this
-//    }
-//
-//    @Override
-//    Appendable append(char c) throws IOException {
-//        eurekaOutput.append(c)
-//        checkStarted()
-//        return this
-//    }
-//})
-//
-//eurekaProc.waitForOrKill( 1000L * 30L )
+waitStarted = Instant.now()
+while (serviceCounter.get() < waitServiceCount){
+    Duration waitDuration = Duration.between(waitStarted, Instant.now())
+    String waitStr = waitDuration.toHours()+":"+waitDuration.toMinutesPart()+":"+waitDuration.toSecondsPart()
+    println "waiting $waitStr"
+
+    Thread.sleep(1000)
+}
