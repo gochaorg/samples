@@ -26,4 +26,10 @@
             <outputDirectory>/src</outputDirectory>
         </fileSet>
     </fileSets>
+    <files>
+        <file>
+            <source>${basedir}/target/git-status</source>
+            <outputDirectory>/</outputDirectory>
+        </file>
+    </files>
 </assembly>

@@ -166,6 +166,28 @@
 				</executions>
 			</plugin>
 
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>3.0.0</version>
+				<executions>
+					<execution>
+						<phase>prepare-package</phase>
+						<id>generate-git-id</id>
+						<goals>
+							<goal>exec</goal>
+						</goals>
+						<configuration>
+							<executable>/usr/bin/bash</executable>
+							<arguments>
+								<argument>${project.basedir}/src/assembly/build-step.sh</argument>
+								<argument>${project.basedir}/target</argument>
+							</arguments>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
 		</plugins>
 	</build>
 
