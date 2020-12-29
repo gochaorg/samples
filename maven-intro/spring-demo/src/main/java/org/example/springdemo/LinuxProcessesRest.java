@@ -5,18 +5,20 @@ import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import xyz.cofe.fn.Tuple2;
 import xyz.cofe.io.fs.File;
 
 import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/proc")
-public class ProcessesRest {
-    private static final Logger log = LoggerFactory.getLogger(ProcessesRest.class);
+@RequestMapping("/api/linux/proc")
+public class LinuxProcessesRest {
+    private static final Logger log = LoggerFactory.getLogger(LinuxProcessesRest.class);
 
     protected Map<String,Long> lastEcho = new ConcurrentHashMap<>();
 
@@ -56,6 +58,17 @@ public class ProcessesRest {
         "stat", "sessionid"
     };
 
+    private static final List<Tuple2<String,Optional<Function<String,Object>>>> extractData = new ArrayList<>(){{
+        add( Tuple2.of("sessionid", Optional.empty()) );
+        add( Tuple2.of("cmdline", Optional.of(
+            str -> Arrays.asList(str.split("\u0000"))
+        )) );
+        add( Tuple2.of("environ", Optional.of(
+            str -> Arrays.asList(str.split("\u0000"))
+        )) );
+        add( Tuple2.of("status", Optional.empty()));
+    }};
+
     @GetMapping()
     public Object processes(){
         File procDir = new File("/proc");
@@ -71,9 +84,15 @@ public class ProcessesRest {
                 var info = new LinkedHashMap<String,Object>();
 
                 info.put("id", procFile.getName());
-                for( String cf : childFiles ){
-                    readProcInfo(procFile, cf).ifPresent(value -> info.put(cf, value));
-                }
+                extractData.forEach( ext -> {
+                    readProcInfo(procFile, ext.a()).ifPresent( str -> {
+                        if( ext.b().isPresent() ){
+                            info.put(ext.a(), ext.b().get().apply(str));
+                        }else{
+                            info.put(ext.a(), str);
+                        }
+                    });
+                } );
 
                 var exe = procFile.resolve("exe");
                 try {
