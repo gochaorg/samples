@@ -52,12 +52,6 @@ public class LinuxProcessesRest {
         }
     }
 
-    private static final String[] childFiles = new String[]{
-        "cmdline",
-        //"mounts",
-        "stat", "sessionid"
-    };
-
     private static final List<Tuple2<String,Optional<Function<String,Object>>>> extractData = new ArrayList<>(){{
         add( Tuple2.of("sessionid", Optional.empty()) );
         add( Tuple2.of("cmdline", Optional.of(
