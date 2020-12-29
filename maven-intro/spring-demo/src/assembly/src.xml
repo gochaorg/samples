@@ -31,5 +31,9 @@
             <source>${basedir}/target/git-status</source>
             <outputDirectory>/</outputDirectory>
         </file>
+        <file>
+            <source>${basedir}/target/git-commit.txt</source>
+            <outputDirectory>/</outputDirectory>
+        </file>
     </files>
 </assembly>
