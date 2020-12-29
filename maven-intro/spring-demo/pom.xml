@@ -188,6 +188,28 @@
 				</executions>
 			</plugin>
 
+			<plugin>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<version>1.7</version>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<configuration>
+							<tasks>
+								<tar basedir="target/${project.artifactId}-${project.version}-dist/${project.artifactId}-${project.version}" destfile="target/${project.artifactId}-${project.version}.tar" />
+								<gzip src="target/${project.artifactId}-${project.version}.tar" destfile="target/${project.artifactId}-${project.version}.tar.gz"  />
+							</tasks>
+						</configuration>
+						<goals>
+							<goal>run</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!--
+            curl -H "Authorization: token 3880ec7c99bd4ecdeeb405165151f365d626fafc" https://api.github.com/user/repos
+            -->
 		</plugins>
 	</build>
 
