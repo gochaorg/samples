@@ -1,0 +1,13 @@
+# Настройки сервера
+server:
+  # Порт на котором запускать
+  port: 8088
+
+# Настройки авторизации
+basic-auth:
+  # Аккануты
+  accounts:
+    - username: usr1  # Логин
+      password: pswd1 # Пароль
+    - username: usr2
+      password: pswd2
