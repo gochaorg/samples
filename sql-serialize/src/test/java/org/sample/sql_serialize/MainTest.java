@@ -17,10 +17,88 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 public class MainTest {
-    @Test
-    public void test01() throws SQLException {
+    /**
+     * Запуск основного цикла тестирования
+     * @param isolation режим изолирования
+     * @param conn1 соединение 1
+     * @param conn2 соединение 2
+     */
+    public void test(int isolation, String table, Connection conn1, Connection conn2) throws SQLException {
+        if( conn1==null )throw new IllegalArgumentException( "conn1==null" );
+        if( conn2==null )throw new IllegalArgumentException( "conn2==null" );
+        if( table==null )throw new IllegalArgumentException( "table==null" );
+
+        // Время начала теста
         long start_time = System.currentTimeMillis();
 
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Подготавливаем первый поток
+        // отключаем всякие auto commit
+        conn1.setAutoCommit(false);
+        conn1.setTransactionIsolation(isolation);
+
+        Inserter insertThread = new Inserter();
+
+        insertThread.start_time = start_time;
+        insertThread.setName("inserter");
+        insertThread.conn = conn1;
+        insertThread.table = table;
+        insertThread.delay_select = 300;
+        insertThread.delay_insert = 300;
+        insertThread.delay_commit = 1400;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Подготавливаем второй поток
+        conn2.setAutoCommit(false);
+        conn2.setTransactionIsolation(isolation);
+
+        ParallelActions parallelThread = new ParallelActions();
+
+        parallelThread.setName("parallel");
+        parallelThread.setDaemon(true);
+        parallelThread.start_time = start_time;
+        parallelThread.conn = conn2;
+        parallelThread.start();
+
+        insertThread.onSelected = ev -> {
+            parallelThread.push( ()->System.out.println("before insert parallel") );
+            parallelThread.push( parallelThread.dumpLocks() );
+            parallelThread.push( parallelThread.insertRow( table,-1,"a", true) );
+
+            parallelThread.push( ()->System.out.println("after insert parallel") );
+            parallelThread.push( parallelThread.dumpLocks() );
+        };
+
+        insertThread.onInserted = ev -> {
+            parallelThread.push( ()->System.out.println("after insert") );
+            parallelThread.push( parallelThread.dumpLocks() );
+        };
+
+        insertThread.onCommitted = ev -> {
+            parallelThread.push( ()->System.out.println("after commit") );
+            parallelThread.push( parallelThread.dumpLocks() );
+        };
+
+        ////////////////////////
+        // Запускаем и ждем
+        insertThread.start();
+        try {
+            insertThread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        parallelThread.interrupt();
+        try {
+            parallelThread.join(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            parallelThread.stop();
+        }
+    }
+
+    @Test
+    public void test01() throws SQLException {
         try( var conn1 = OpenConn.open_as_usr1();
              var conn2  = OpenConn.open_as_usr1();
         ){
@@ -29,64 +107,31 @@ public class MainTest {
 
             System.out.println("connected");
 
-            var sql = new SQL(conn1);
-
-            var prepare = new PrepareDB(sql);
+            var prepare = new PrepareDB(new SQL(conn1));
             prepare.dropTables();
             prepare.createTables();
-            /////////////////////////
 
-            conn1.setAutoCommit(false);
+            test(isolation, "t1", conn1, conn2);
 
-            List<Thread> threads = new ArrayList<>();
+            ////////////////////////////////////////////////
+            System.out.println("=".repeat(80));
+            isolation = Connection.TRANSACTION_SERIALIZABLE;
+            test(isolation, "t2", conn1, conn2);
 
-            Inserter insTh = new Inserter();
-            threads.add(insTh);
+            ///////////////////////////
+            System.out.println("");
+            System.out.println("*".repeat(80));
+            System.out.println("");
+            new SQL(conn1).exec("select * from t1 order by id");
 
-            insTh.start_time = start_time;
-            insTh.conn = conn1;
-            insTh.tr_isolation = isolation;
-            insTh.delay_select = 0;
-            insTh.delay_insert = 200;
-            insTh.delay_commit = 1800;
-            insTh.setName("inserter");
-
-            /////////////////////
-            conn2.setAutoCommit(false);
-            conn2.setTransactionIsolation(isolation);
-
-            ParallelActions parallelActions = new ParallelActions();
-            parallelActions.setName("parallel");
-            parallelActions.conn = conn2;
-            parallelActions.start_time = start_time;
-            parallelActions.setDaemon(true);
-            parallelActions.start();
-
-            insTh.onSelected = ev -> {
-                parallelActions.push( parallelActions.dumpLocks() );
-                parallelActions.push( parallelActions.insertRow(-1,"a", true) );
-            };
-
-            threads.forEach(Thread::start);
-            threads.forEach(t -> {
-                try {
-                    t.join();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                    t.stop();
-                }
-            });
-
-            parallelActions.interrupt();
-            try {
-                parallelActions.join(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-                parallelActions.stop();
-            }
+            System.out.println("");
+            System.out.println("-".repeat(80));
+            System.out.println("");
+            new SQL(conn1).exec("select * from t2 order by id");
         }
     }
 
+    //region всякие доп функции
     public interface GetConnection {
         public Connection getConnection();
     }
@@ -114,12 +159,13 @@ public class MainTest {
         }
     }
     public interface InsertRow extends GetConnection, GetOutput, GetPrefix {
-        public default Runnable insertRow( int n, String tag, boolean forceCommit ){
+        public default Runnable insertRow( String table, int n, String tag, boolean forceCommit ){
+            if( table==null )throw new IllegalArgumentException( "table==null" );
             return ()->{
                 var sql = new SQL(getConnection());
                 sql.print( b -> b.out(getOutput()) );
 
-                sql.exec("insert into t1 (n,t) values (?,?)", List.of(n,tag) );
+                sql.exec("insert into "+table+" (n,t) values (?,?)", List.of(n,tag) );
                 if( forceCommit ){
                     var conn = getConnection();
                     try {
@@ -151,6 +197,12 @@ public class MainTest {
             }
         }
     }
+
+    /**
+     * Поток, который вычитывает задания из очереди и выполняет их.
+     *
+     * <p> Задания в очереди могут быть выполнены после определенного промежутка времени.
+     */
     public static class ParallelActions extends Thread implements GetOutput, GetPrefix, DumpLocks, InsertRow {
         public Connection conn;
         public long start_time;
@@ -202,6 +254,11 @@ public class MainTest {
                 }
             }
         }
+
+        /**
+         * Добавляет задание в очередь
+         * @param r задание
+         */
         public void push(Runnable r){
             synchronized (tasks){
                 tasks.add(r);
@@ -214,19 +271,22 @@ public class MainTest {
             push(new ConditionalRunnable(r, ()->System.currentTimeMillis()>=after ));
         }
     }
+    //endregion
 
+    //region notification events
     public static class InsEvent {
         public int iteration;
-        public long durationNano;
     }
     public static class InsEvent_Select extends InsEvent {
         public int rowsCount;
     }
+    //endregion
 
+    @SuppressWarnings("BusyWait")
     public static class Inserter extends ParallelActions {
         public Connection conn;
-        public int tr_isolation;
         public String tag = "a";
+        public String table = "t1";
 
         public int cnt = 10;
         public long delay_insert = 0;
@@ -251,9 +311,10 @@ public class MainTest {
             sql.print( b -> b.out(getOutput()) );
 
             try {
-                log("auto commit off");
-                conn.setAutoCommit(false);
+                log("auto commit "+(conn.getAutoCommit() ? "on" : "off"));
 
+                //region log transact isolation
+                int tr_isolation = conn.getTransactionIsolation();
                 String isol_name = tr_isolation==Connection.TRANSACTION_NONE
                     ? "None"
                     : tr_isolation==Connection.TRANSACTION_READ_UNCOMMITTED
@@ -266,75 +327,84 @@ public class MainTest {
                     ? "serializable"
                     : "isolation "+tr_isolation;
 
-                log("set transact isolation "+isol_name);
-                conn.setTransactionIsolation(tr_isolation);
+                log("transact isolation "+isol_name);
+                //endregion
 
                 if( cnt>0 ){
                     for( int i=0; i<cnt; i++ ){
+                        //region select rows count
                         log("select rows count");
 
+                        //region delay before select
                         if( delay_select>0 ){
                             log("delay select "+delay_select);
                             Thread.sleep(delay_select);
                         }
-
-                        long t0_sel = System.nanoTime();
-                        var cnt_rows_0 = sql.rows("select count(*) as cnt from t1 where t = ?",List.of(tag));
-                        long t1_sel = System.nanoTime();
+                        //endregion
+                        //region read rows count: select count(*) from table ...
+                        var cnt_rows_0 = sql.rows(
+                            "select count(*) as cnt from "+table+" where t = ?",List.of(tag)
+                        );
 
                         var cnt_rows_1 = cnt_rows_0.size()>0 ? cnt_rows_0.get(0).get("cnt") : null;
                         var cnt_rows = cnt_rows_1 instanceof Number ? ((Number)cnt_rows_1).intValue() : -1;
 
-                        log("selected rows count = "+cnt_rows+", t.ms="+(t1_sel-t0_sel)/1_000_000.0);
-
+                        log("selected rows count = "+cnt_rows);
+                        //endregion
+                        //region notify onSelected(event)
                         var onSel = onSelected;
                         if( onSel!=null ){
                             InsEvent_Select detail = new InsEvent_Select();
                             detail.iteration = i;
                             detail.rowsCount = cnt_rows;
-                            detail.durationNano = t1_sel - t0_sel;
                             onSel.accept(detail);
                         }
-
+                        //endregion
+                        //endregion
+                        //region insert rows count
                         log("insert");
-
+                        //region delay before insert
                         if( delay_insert>0 ){
                             log("delay insert "+delay_insert);
                             Thread.sleep(delay_insert);
                         }
+                        //endregion
 
-                        long t0_ins = System.nanoTime();
-                        sql.exec("insert into t1 (n,t) values (?,?)", List.of(cnt_rows,tag) );
-                        long t1_ins = System.nanoTime();
-                        log("inserted, t.ms="+(t1_ins-t0_ins)/1_000_000.0);
+                        sql.exec("insert into "+table+" (n,t) values (?,?)", List.of(cnt_rows,tag) );
+                        log("inserted");
 
+                        //region notify onInserted
                         var onIns = onInserted;
                         if( onIns!=null ){
                             InsEvent ev = new InsEvent();
-                            ev.durationNano = t1_ins - t0_ins;
                             ev.iteration = i;
                             onIns.accept(ev);
                         }
+                        //endregion
+                        //endregion
+                        //region commit changes
+                        if( !conn.getAutoCommit() ) {
+                            log("commit");
+                            //region delay before commit
+                            if (delay_commit > 0) {
+                                log("commit delay " + delay_commit);
+                                Thread.sleep(delay_commit);
+                            }
+                            //endregion
 
-                        log("commit");
-                        if( delay_commit>0 ){
-                            log("commit delay "+delay_commit);
-                            Thread.sleep(delay_commit);
+                            conn.commit();
+                            log("committed");
+
+                            //region notify onCommitted(event)
+                            var onCmt = onCommitted;
+                            if (onCmt != null) {
+                                InsEvent ev = new InsEvent();
+                                ev.iteration = i;
+                                onCmt.accept(ev);
+                            }
+                            //endregion
                         }
-
-                        long t0_cmt = System.nanoTime();
-                        conn.commit();
-                        long t1_cmt = System.nanoTime();
-
-                        log("committed, t.ms="+(t1_cmt-t0_cmt)/1_000_000.0);
-
-                        var onCmt = onCommitted;
-                        if( onCmt!=null ){
-                            InsEvent ev = new InsEvent();
-                            ev.durationNano = t1_cmt - t0_cmt;
-                            ev.iteration = i;
-                            onCmt.accept(ev);
-                        }
+                        //endregion
                     }
                 }
             } catch (SQLException | InterruptedException e) {

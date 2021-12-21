@@ -12,6 +12,16 @@
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <junit.version>5.4.0</junit.version>
+
+        <docker.container>mssql-ser-1</docker.container>
+        <docker.ports>-p 1433:1433</docker.ports>
+        <docker.image>mcr.microsoft.com/mssql/server:latest</docker.image>
+
+        <mssql.sa.password>qA^125zA_e+</mssql.sa.password>
+        <mssql.db>test_ser_01</mssql.db>
+        <mssql.host>localhost:1433</mssql.host>
+        <mssql.usr.name>usr1</mssql.usr.name>
+        <mssql.usr.pswd>usr1</mssql.usr.pswd>
     </properties>
 
     <dependencies>
@@ -27,6 +37,11 @@
             <version>1.3</version>
         </dependency>
         <dependency>
+            <groupId>xyz.cofe</groupId>
+            <artifactId>fs</artifactId>
+            <version>1.2.1</version>
+        </dependency>
+        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
             <version>${junit.version}</version>
@@ -35,6 +50,25 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>${project.basedir}/src/main/resources</directory>
+                <excludes>
+                    <exclude>**/*.properties</exclude>
+                    <exclude>**/*sample*</exclude>
+                </excludes>
+                <filtering>false</filtering>
+            </resource>
+            <resource>
+                <directory>${project.basedir}/src/main/resources</directory>
+                <includes>
+                    <include>**/*.properties</include>
+                    <include>**/*sample*</include>
+                </includes>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

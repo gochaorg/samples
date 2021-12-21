@@ -1,5 +1,11 @@
 package org.sample.sql_serialize;
 
+import xyz.cofe.io.fn.IOFun;
+
+import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 /**
  * Подготовка СУБД
  */
@@ -61,6 +67,5 @@ public class PrepareDB {
                 ")"
         );
     }
-
 
 }

@@ -43,6 +43,7 @@ public class PrintResultSet {
         tableFormat.getCellFormatMap().put("resource_lock_partition", true, new CellFormat().width(10));
         tableFormat.getCellFormatMap().put("request_mode", true, new CellFormat().width(8));
         tableFormat.getCellFormatMap().put("request_type", true, new CellFormat().width(7));
+        tableFormat.getCellFormatMap().put("dt", true, new CellFormat().width(30));
     }
     private boolean trimValues = true;
 

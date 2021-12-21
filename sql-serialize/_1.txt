@@ -1,0 +1,27 @@
+3> SET IMPLICIT_TRANSACTIONS OFF;
+4> SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+5> go
+1> 
+2> 
+3> begin transaction;
+4> 
+5> go
+1> 
+2> declare @cnt int;
+3> select @cnt = count(*) from t1;
+4> print 'count '+cast(@cnt as nvarchar(10));
+5> print 't '+cast(@@trancount as nvarchar(10));
+6> insert into t1 (n) values (@cnt);
+7> print 't '+cast(@@trancount as nvarchar(10));
+8> 
+9> go
+count 2
+t 1
+
+(1 rows affected)
+t 1
+1> commit;
+2> print 't '+cast(@@trancount as nvarchar(10));
+3> go
+t 0
+1> 
