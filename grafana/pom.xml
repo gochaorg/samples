@@ -57,6 +57,21 @@ Spring boot предоставляет механизм, который позв
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
+<!--
+Добавление метрик
+Micrometer по-умолчанию включен в зависимости spring boot, нам лишь необходимо добавить адаптер в
+необходимый нам формат, так как в руководстве использован Prometheus необходимо добавить следующую зависимость.
+
+Далее необходимо отредактировать файл application.yml для отображения эндпоинта Prometheus в actuator.
+
+Теперь, если запустить приложение и зайти по адресу http://localhost:8080/actuator/prometheus
+должен отобразиться вывод примерно следующего содержания.
+-->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

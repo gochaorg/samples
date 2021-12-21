@@ -1,0 +1,18 @@
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        "[http.server.requests]": true
+
+# Здесь включены health,prometheus
+# эндпоинты в actuator.
+# Включен экспорт метрик в Prometheus,
+# а также `percentiles-histogram`,
+# которая позволяет верхнеуровнего оценить sla эндпоинтов приложения.
