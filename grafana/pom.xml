@@ -4,6 +4,12 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+<!--
+https://habr.com/ru/post/548700/
+
+Сбор метрик Spring Boot приложения c помощью Prometheus и Grafana
+-->
+
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
@@ -38,6 +44,18 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+<!--
+Настройка actuator
+Spring boot предоставляет механизм, который позволяет получать различные метаданные приложения. Для этого необходимо добавить зависимость.
+
+По-умолчанию, actuator находится на порту 8080 и uri /actuator
+
+В приложении-примере на github actuator находится по следующему адресу localhost:8080/actuator
+-->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
 
     </dependencies>
 
