@@ -1,3 +1,7 @@
+spring:
+  application:
+    name: appName1
+
 management:
   endpoints:
     web:
