@@ -15,12 +15,22 @@ public class CustomMetrics {
     public final Counter counter1;
     public final Counter counter2a;
     public final Timer timer1;
+
+    // ссылка на реестр метрик
     public final MeterRegistry registry;
 
+    // кеш метрик
     public final Map<String,Counter> dynCounterByName = new ConcurrentHashMap<>();
 
+    /**
+     * Создание или получение ранее созданной метрики
+     * @param name имя метрики
+     * @return метрика
+     */
     public Counter counter(String name){
         if( name==null )throw new IllegalArgumentException( "name==null" );
+        // создание метрики, если еще не была создана либо возвращение ранее созданной метрики
+        //    можно создать с метками (tags)
         return dynCounterByName.computeIfAbsent(name, registry::counter);
     }
 

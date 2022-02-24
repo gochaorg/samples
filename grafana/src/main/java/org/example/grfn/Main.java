@@ -15,6 +15,7 @@ import java.util.Random;
 @SpringBootApplication
 @RestController
 public class Main {
+    // ссылка bean со счетчиками
     private final CustomMetrics customMetrics;
 
     public Main(CustomMetrics metrics){
@@ -25,6 +26,10 @@ public class Main {
     public Object compute( @PathVariable("count") int count ){
         return customMetrics.timer1.record(()->{
             long v = 0;
+
+            customMetrics.timer1.record(()->{
+            });
+
             Random rnd = new Random();
             for( int i=0; i<count; i++ ){
                 v += rnd.nextInt(100);
@@ -56,12 +61,14 @@ public class Main {
 
     @GetMapping("/hello1")
     public String hello1(){
+        // увеличение счетчика
         customMetrics.counter2a.increment();
         return "hello";
     }
 
     @GetMapping("/dyn/counter")
     public String dynamicCounter(@RequestParam("name") String name){
+        // увеличение значения метрики
         customMetrics.counter(name).increment();
         return "counter "+name;
     }
