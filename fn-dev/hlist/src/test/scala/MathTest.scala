@@ -290,7 +290,7 @@ class MathTest extends munit.FunSuite {
   // In a similar style that we used to compare numbers, we’ll create another type that will represent the sum of two numbers as types:
   // В том же стиле, который мы использовали для сравнения чисел, мы создадим еще один тип, который будет представлять сумму двух чисел как типы:
   
-  trait +[A <: Nat, B <: Nat, S <: Nat]
+  // trait +[A <: Nat, B <: Nat, S <: Nat]
 
   // which means that “number” A added with “number” B will give “number” S. First, we’ll make the compiler automatically 
   // detect the truth value of A + B = S by making it construct an implicit instance of +[A, B, S]. We should be able to write
@@ -342,8 +342,17 @@ class MathTest extends munit.FunSuite {
   // Notice that the type +[_0, A, A] and +[A, _0, A] are different - this is why we need two different methods there.
   // Обратите внимание, что тип +[_0, A, A] и +[A, _0, A] разные — поэтому нам нужны два разных метода.
 
-  // At this point, you might be wondering why we need those constraints and why we can’t simply say that for any number A, it’s always true that 0 + A = A and A + 0 = A. That’s true and more general, but it’s also confusing to the compiler, because it would have multiple routes through which it can build an instance of +[_0, _0, _0]. We want to separate these cases so that the compiler can build each implicit instance by following exactly one induction path.
-  // В этот момент вам может быть интересно, зачем нам нужны эти ограничения и почему мы не можем просто сказать, что для любого числа A всегда верно, что 0 + A = A и A + 0 = A. Это правда и более общее, но это также сбивает с толку компилятор, потому что у него будет несколько маршрутов, по которым он может построить экземпляр +[_0, _0, _0]. Мы хотим разделить эти случаи, чтобы компилятор мог построить каждый неявный экземпляр, следуя ровно одному пути индукции.
+  // At this point, you might be wondering why we need those constraints and 
+  // why we can’t simply say that for any number A, it’s always true that 0 + A = A and A + 0 = A. 
+  // That’s true and more general, but it’s also confusing to the compiler, 
+  // because it would have multiple routes through which it can build an instance of +[_0, _0, _0]. 
+  // We want to separate these cases so that the compiler can build each implicit instance by following exactly one induction path.
+
+  // В этот момент вам может быть интересно, зачем нам нужны эти ограничения и 
+  // почему мы не можем просто сказать, что для любого числа A всегда верно, что 0 + A = A и A + 0 = A. 
+  // Это правда и более общее, но это также сбивает с толку компилятор, 
+  // потому что у него будет несколько маршрутов, по которым он может построить экземпляр +[_0, _0, _0]. 
+  // Мы хотим разделить эти случаи, чтобы компилятор мог построить каждый неявный экземпляр, следуя ровно одному пути индукции.
 
   // With these 3 implicits, we can already validate a number of sums:
   // С помощью этих трех имплицитов мы уже можем проверить ряд сумм:
@@ -351,6 +360,62 @@ class MathTest extends munit.FunSuite {
   // val zeroSum: +[_0, _0, _0] = +[_0, _0, _0]
   // val anotherSum: +[_0, _2, _2] = +[_0, _2, _2]
 
-  // but are yet to validate sums like +[_2, _3, _5]. That’s the subject of the following inductive axiom. The reasoning works like this: if A + B = S, then it’s also true that Succ[A] + Succ[B] = Succ[Succ[S]]. In the compiler’s language, if the compiler can create an implicit +[A, B, S], then it must als be able to create an implicit +[Succ[A], Succ[B], Succ[Succ[S]]]:
-  // но еще не проверили суммы вроде +[_2, _3, _5]. Это является предметом следующей индуктивной аксиомы. Рассуждение работает следующим образом: если A + B = S, то также верно, что Succ[A] + Succ[B] = Succ[Succ[S]]. На языке компилятора, если компилятор может создать неявный +[A, B, S], то он также должен быть в состоянии создать неявный +[Succ[A], Succ[B], Succ[Succ[S]] ]:
+  // but are yet to validate sums like +[_2, _3, _5]. 
+  // That’s the subject of the following inductive axiom. 
+  // The reasoning works like this: 
+  //   if A + B = S, then it’s also true that Succ[A] + Succ[B] = Succ[Succ[S]]. 
+  // In the compiler’s language, if the compiler can create an implicit +[A, B, S], 
+  // then it must als be able to create an implicit +[Succ[A], Succ[B], Succ[Succ[S]]]:
+  
+  // но еще не проверили суммы вроде +[_2, _3, _5]. 
+  // Это является предметом следующей индуктивной аксиомы. 
+  // Рассуждение работает следующим образом: 
+  //   если A + B = S, то также верно, что Succ[A] + Succ[B] = Succ[Succ[S]]. 
+  // На языке компилятора, если компилятор может создать неявный +[A, B, S], 
+  // то он также должен быть в состоянии создать неявный +[Succ[A], Succ[B], Succ[Succ[S]] ]:
+
+  // implicit def inductive[A <: Nat, B <: Nat, S <: Nat](implicit plus: +[A, B, S]): +[Succ[A], Succ[B], Succ[Succ[S]]] =
+  //   new +[Succ[A], Succ[B], Succ[Succ[S]]] {}
+
+  // With these 4 implicits, the compiler is now able to validate any sum. For example:
+  // С этими 4 имплицитами компилятор теперь может проверить любую сумму. Например:
+
+  // val five: +[_2, _3, _5] = +[_2, _3, _5]
+
+  // This compiles, because
+  // 
+  //     the compiler needs an implicit +[_2, _3, _5] which is in fact +[Succ[_1], Succ[2], Succ[Succ[_3]]]
+  //     the compiler can run the inductive method, but it requires an implicit +[_1, _2, _3] which is +[Succ[_0], Succ[_1], Succ[Succ[_1]]]
+  //     the compiler can run the inductive method again, but it requires an implicit +[_0, _1, _1]
+  //     the compiler can run the basicRight method and build the implicit +[_0, _1, _1]
+  //     the compiler can then build all the other dependent implicits
+
+  // Это компилируется, потому что
+  // 
+  //      компилятору нужен неявный +[_2, _3, _5], который на самом деле +[Succ[_1], Succ[2], Succ[Succ[_3]]]
+  //      компилятор может запустить индуктивный метод, но для этого требуется неявный +[_1, _2, _3], который равен +[Succ[_0], Succ[_1], Succ[Succ[_1]]]
+  //      компилятор может снова запустить индуктивный метод, но для этого требуется неявный +[_0, _1, _1]
+  //      компилятор может запустить метод basicRight и построить неявный +[_0, _1, _1]
+  //      компилятор может затем построить все остальные зависимые имплициты  
+
+  // However, if we write an incorrect “statement”, such as
+  // Однако, если мы напишем неверное «утверждение», такое как
+
+  // val four: +[_2, _3, _4] = +[_2, _3, _4]
+
+  // the code can’t compile because the compiler can’t find the appropriate implicit instance.
+  
+  // Right now, our code looks like this:
+  
+  trait +[A <: Nat, B <: Nat, S <: Nat]
+  object + {
+    implicit val zero: +[_0, _0, _0] = new +[_0, _0, _0] {}
+    implicit def basicRight[B <: Nat](implicit lt: _0 < B): +[_0, B, B] = new +[_0, B, B] {}
+    implicit def basicLeft[B <: Nat](implicit lt: _0 < B): +[B, _0, B] = new +[B, _0, B] {}
+    implicit def inductive[A <: Nat, B <: Nat, S <: Nat](implicit plus: +[A, B, S]): +[Succ[A], Succ[B], Succ[Succ[S]]] =
+        new +[Succ[A], Succ[B], Succ[Succ[S]]] {}
+    def apply[A <: Nat, B <: Nat, S <: Nat](implicit plus: +[A, B, S]): +[A, B, S] = plus
+  }  
+
+  
 }
