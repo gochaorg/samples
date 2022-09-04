@@ -407,15 +407,147 @@ class MathTest extends munit.FunSuite {
   
   // Right now, our code looks like this:
   
-  trait +[A <: Nat, B <: Nat, S <: Nat]
-  object + {
-    implicit val zero: +[_0, _0, _0] = new +[_0, _0, _0] {}
-    implicit def basicRight[B <: Nat](implicit lt: _0 < B): +[_0, B, B] = new +[_0, B, B] {}
-    implicit def basicLeft[B <: Nat](implicit lt: _0 < B): +[B, _0, B] = new +[B, _0, B] {}
-    implicit def inductive[A <: Nat, B <: Nat, S <: Nat](implicit plus: +[A, B, S]): +[Succ[A], Succ[B], Succ[Succ[S]]] =
-        new +[Succ[A], Succ[B], Succ[Succ[S]]] {}
-    def apply[A <: Nat, B <: Nat, S <: Nat](implicit plus: +[A, B, S]): +[A, B, S] = plus
-  }  
+  // trait +[A <: Nat, B <: Nat, S <: Nat]
+  // object + {
+  //   implicit val zero: +[_0, _0, _0] = new +[_0, _0, _0] {}
+  //   implicit def basicRight[B <: Nat](implicit lt: _0 < B): +[_0, B, B] = new +[_0, B, B] {}
+  //   implicit def basicLeft[B <: Nat](implicit lt: _0 < B): +[B, _0, B] = new +[B, _0, B] {}
+  //   implicit def inductive[A <: Nat, B <: Nat, S <: Nat](implicit plus: +[A, B, S]): +[Succ[A], Succ[B], Succ[Succ[S]]] =
+  //       new +[Succ[A], Succ[B], Succ[Succ[S]]] {}
+  //   def apply[A <: Nat, B <: Nat, S <: Nat](implicit plus: +[A, B, S]): +[A, B, S] = plus
+  // }
 
+  // 8. Supercharging Addition
+  // 8. Добавление наддува
+  // -------------------------------
+
+  // This is great so far! 
+  // We can make the compiler validate type relationships like 
+  // the “addition” of “numbers” at compile time. 
+  // However, at this point we can’t make the compiler figure out what the result of an addition should be 
+  // - we need to specify the result type ourselves, and the compiler will simply show a thumbs-up if the type is good.
   
+  // Это здорово до сих пор! 
+  // Мы можем заставить компилятор проверять отношения типов, такие как 
+  // «сложение» «чисел» во время компиляции. 
+  // Однако на данный момент мы не можем заставить компилятор разобраться, каким должен быть результат сложения 
+  // — нам нужно самим указать тип результата, и компилятор просто покажет палец вверх, если тип подходит.
+
+  // The next level in this Peano arithmetic implementation would be to somehow make 
+  // the compiler infer the sum type by itself. For that, we’ll change the type signature of the addition:
+
+  // Следующим уровнем в этой арифметической реализации Пеано было бы каким-то образом заставить 
+  // компилятор самостоятельно определить тип суммы. Для этого изменим сигнатуру типа дополнения:
+
+  // trait +[A <: Nat, B <: Nat] extends Nat {
+  //   type Result <: Nat
+  // }
+
+  // So instead of a type argument, we now have an abstract type member. This will help us when we use the + type at the testing phase. Now, in the companion object, we’ll declare an auxiliary type:
+  // Итак, вместо аргумента типа у нас теперь есть член абстрактного типа. Это поможет нам, когда мы будем использовать тип + на этапе тестирования. Теперь в объекте-компаньоне объявим вспомогательный тип:
+
+  // object + {
+  //   type Plus[A <: Nat, B <: Nat, S <: Nat] = +[A, B] { type Result = S }
+  // }
+
+  // This new type Plus is exactly the same as our previous + and we will use it in our implicit resolution. The trick here is to have the compiler automatically match the Result abstract type member to the S type argument of the auxiliary sum type.
+  // Этот новый тип Plus точно такой же, как наш предыдущий +, и мы будем использовать его в нашем неявном разрешении. Хитрость здесь заключается в том, чтобы компилятор автоматически сопоставлял элемент абстрактного типа Result с аргументом типа S вспомогательного типа суммы.
+
+  // The next step is to change our axiom (read: implicits) definitions to use this new type:
+  // Следующим шагом является изменение наших определений аксиом (читай: неявных) для использования этого нового типа:
+
+  // implicit val zero: Plus[_0, _0, _0] = new +[_0, _0] { type Result = _0 }
+  // implicit def basicRight[B <: Nat](implicit lt: _0 < B): Plus[_0, B, B] = new +[_0, B] { type Result = B }
+  // implicit def basicLeft[B <: Nat](implicit lt: _0 < B): Plus[B, _0, B] = new +[B, _0] { type Result = B }
+  // implicit def inductive[A <: Nat, B <: Nat, S <: Nat](implicit plus: Plus[A, B, S]): Plus[Succ[A], Succ[B], Succ[Succ[S]]] =
+  //   new +[Succ[A], Succ[B]] { type Result = Succ[Succ[S]] }
+
+  // Each rewrite goes as follows:
+  // 
+  //     make the return type be the new Plus type instead of the old +
+  //     because we can’t build Plus directly, we’ll need to build an instance of + that has the correct type member
+  // 
+  // Finally, the apply method will need to undergo a change as well. First of all, we’ll get rid of the third type argument:
+
+  // Каждое переписывание происходит следующим образом:
+  // 
+  //      сделать возвращаемый тип новым типом Plus вместо старого +
+  //      поскольку мы не можем построить Plus напрямую, нам нужно создать экземпляр + с правильным членом типа
+  // 
+  // Наконец, метод применения также должен быть изменен. Прежде всего, избавимся от аргумента третьего типа:  
+    
+  // def apply[A <: Nat, B <: Nat](implicit plus: +[A, B]): +[A, B] = plus
+
+  // At this point, we can now say
+  // Теперь мы можем сказать
+
+  // val five: +[_2, _3] = +.apply
+
+  // and if the code compiles, then the compiler is able to validate the existence of a sum type between _2 and _3.
+  // But what’s the result?
+
+  // и если код компилируется, то компилятор может проверить существование типа суммы между _2 и _3.
+  // Но каков результат?
+
+
+  // 9. The Final Blow
+  // 9. Последний удар
+  // --------------------------------
+
+  // Right now, we can’t see the final result of summing the “numbers”. If we print the type tag of the sum we won’t get too much info:
+  // Прямо сейчас мы не можем видеть окончательный результат суммирования «цифр». Если мы напечатаем тег type суммы, мы не получим слишком много информации:
+
+  //   > println(show(+[_2, _3]))
+  //   TypeTag[_2 + _3]
+
+  // However, we can force the compiler to show the result type to us, because we have a Result type member in the + trait. All we need to do is change the apply method slightly:
+  // Однако мы можем заставить компилятор показать нам тип результата, потому что у нас есть член типа Result в трейте +. Все, что нам нужно сделать, это немного изменить метод применения:
+
+  //    def apply[A <: Nat, B <: Nat](implicit plus: +[A, B]): Plus[A, B, plus.Result] = plus
+
+  // Instead of returning a +[A, B], we return a Plus[A, B, plus.Result]. We can use this dirty trick because
+  // 
+  //     Plus is nothing but a type alias
+  //     we can use type members in method return types
+  // 
+  // With this minor change, the code still compiles, but if we show the type tag now, the tag looks different:
+
+  // Вместо возврата +[A, B] мы возвращаем Plus[A, B, plus.Result]. Мы можем использовать этот грязный трюк, потому что
+  // 
+  //      Плюс не что иное, как псевдоним типа
+  //      мы можем использовать члены типа в возвращаемых типах метода
+  // 
+  // С этим небольшим изменением код по-прежнему компилируется, но если мы сейчас покажем тег type, он будет выглядеть по-другому:
+
+  //   > println(show(+[_2, _3]))
+  //   TypeTag[Succ[Succ[_0]] + Succ[Succ[Succ[_0]]]{ type Result = Succ[Succ[Succ[Succ[Succ[_0]]]]] }]
+
+  // In other words, the result type the compiler has is Succ[Succ[Succ[Succ[Succ[_0]]]]], which is _5!
+  // The final code is below:
+
+  // Другими словами, компилятор имеет тип результата Succ[Succ[Succ[Succ[Succ[_0]]]]], то есть _5!
+  // Окончательный код ниже:
+
+  trait +[A <: Nat, B <: Nat] { type Result <: Nat }
+  object + {
+    type Plus[A <: Nat, B <: Nat, S <: Nat] = +[A, B] { type Result = S }
+    implicit val zero: Plus[_0, _0, _0] = new +[_0, _0] { type Result = _0 }
+    implicit def basicRight[B <: Nat](implicit lt: _0 < B): Plus[_0, B, B] = new +[_0, B] { type Result = B }
+    implicit def basicLeft[B <: Nat](implicit lt: _0 < B): Plus[B, _0, B] = new +[B, _0] { type Result = B }
+    implicit def inductive[A <: Nat, B <: Nat, S <: Nat](implicit plus: Plus[A, B, S]): Plus[Succ[A], Succ[B], Succ[Succ[S]]] =
+      new +[Succ[A], Succ[B]] { type Result = Succ[Succ[S]] }
+    def apply[A <: Nat, B <: Nat](implicit plus: +[A, B]): Plus[A, B, plus.Result] = plus
+  }
+
+  // def main(args: Array[String]): Unit = {
+  //     println(show(+[_2, _3]))
+  // }
+
+  // P.S. Creating a value of the sum type and then printing it will not produce the same result because of how types are attached to expressions:
+  // P.S. Создание значения типа суммы и его последующая печать не даст такого же результата из-за того, как типы присоединяются к выражениям:
+
+  //   > val five: +[_2, _3] = +[_2, _3]
+  //   > println(five)
+  //   TypeTag[_2 + _3]
+
 }
