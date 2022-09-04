@@ -32,3 +32,6 @@ metals.sbt
 /.worksheet/
 .bloop/
 .metals/
+.clj-kondo/
+.clj-kondo
+.lsp
