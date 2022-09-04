@@ -443,15 +443,27 @@ class MathTest extends munit.FunSuite {
   //   type Result <: Nat
   // }
 
-  // So instead of a type argument, we now have an abstract type member. This will help us when we use the + type at the testing phase. Now, in the companion object, we’ll declare an auxiliary type:
-  // Итак, вместо аргумента типа у нас теперь есть член абстрактного типа. Это поможет нам, когда мы будем использовать тип + на этапе тестирования. Теперь в объекте-компаньоне объявим вспомогательный тип:
+  // So instead of a type argument, we now have an abstract type member. 
+  // This will help us when we use the + type at the testing phase. 
+  // Now, in the companion object, we’ll declare an auxiliary type:
+
+  // Итак, вместо аргумента типа у нас теперь есть член абстрактного типа. 
+  // Это поможет нам, когда мы будем использовать тип + на этапе тестирования. 
+  // Теперь в объекте-компаньоне объявим вспомогательный тип:
 
   // object + {
   //   type Plus[A <: Nat, B <: Nat, S <: Nat] = +[A, B] { type Result = S }
   // }
 
-  // This new type Plus is exactly the same as our previous + and we will use it in our implicit resolution. The trick here is to have the compiler automatically match the Result abstract type member to the S type argument of the auxiliary sum type.
-  // Этот новый тип Plus точно такой же, как наш предыдущий +, и мы будем использовать его в нашем неявном разрешении. Хитрость здесь заключается в том, чтобы компилятор автоматически сопоставлял элемент абстрактного типа Result с аргументом типа S вспомогательного типа суммы.
+  // This new type Plus is exactly the same as our previous + and 
+  // we will use it in our implicit resolution. 
+  // The trick here is to have the compiler automatically match the 
+  // Result abstract type member to the S type argument of the auxiliary sum type.
+
+  // Этот новый тип Plus точно такой же, как наш предыдущий +, и 
+  // мы будем использовать его в нашем неявном разрешении. 
+  // Хитрость здесь заключается в том, чтобы компилятор автоматически сопоставлял элемент абстрактного типа 
+  // Result с аргументом типа S вспомогательного типа суммы.
 
   // The next step is to change our axiom (read: implicits) definitions to use this new type:
   // Следующим шагом является изменение наших определений аксиом (читай: неявных) для использования этого нового типа:
@@ -494,14 +506,20 @@ class MathTest extends munit.FunSuite {
   // 9. Последний удар
   // --------------------------------
 
-  // Right now, we can’t see the final result of summing the “numbers”. If we print the type tag of the sum we won’t get too much info:
-  // Прямо сейчас мы не можем видеть окончательный результат суммирования «цифр». Если мы напечатаем тег type суммы, мы не получим слишком много информации:
+  // Right now, we can’t see the final result of summing the “numbers”. 
+  // If we print the type tag of the sum we won’t get too much info:
+  // Прямо сейчас мы не можем видеть окончательный результат суммирования «цифр». 
+  // Если мы напечатаем тег type суммы, мы не получим слишком много информации:
 
   //   > println(show(+[_2, _3]))
   //   TypeTag[_2 + _3]
 
-  // However, we can force the compiler to show the result type to us, because we have a Result type member in the + trait. All we need to do is change the apply method slightly:
-  // Однако мы можем заставить компилятор показать нам тип результата, потому что у нас есть член типа Result в трейте +. Все, что нам нужно сделать, это немного изменить метод применения:
+  // However, we can force the compiler to show the result type to us, 
+  // because we have a Result type member in the + trait. All we need to do is change the apply method slightly:
+    
+  // Однако мы можем заставить компилятор показать нам тип результата, 
+  // потому что у нас есть член типа Result в трейте +. Все, что нам нужно сделать, 
+  // это немного изменить метод применения:
 
   //    def apply[A <: Nat, B <: Nat](implicit plus: +[A, B]): Plus[A, B, plus.Result] = plus
 
@@ -550,4 +568,7 @@ class MathTest extends munit.FunSuite {
   //   > println(five)
   //   TypeTag[_2 + _3]
 
+  ///////////////////////////////////////////////////////////////////
+  // https://blog.rockthejvm.com/type-level-programming-part-3/
+  
 }
