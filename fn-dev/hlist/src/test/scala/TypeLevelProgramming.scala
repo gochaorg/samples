@@ -6,9 +6,9 @@
 //
 // and in order to print a type signature, I have the following code:
 object TypeLevelProgramming {
-  import scala.reflect.runtime.universe._
-  def show[T](value: T)(implicit tag: TypeTag[T]) =
-    tag.toString.replace("myPackage.TypeLevelProgramming.", "")
+  //import scala.reflect.runtime.universe._
+  //def show[T](value: T)(implicit tag: TypeTag[T]) =
+  //  tag.toString.replace("myPackage.TypeLevelProgramming.", "")
 }
 
 // Again, we aren’t cheating so that we manipulate types at runtime - the compiler 
