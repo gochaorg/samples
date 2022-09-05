@@ -581,9 +581,9 @@ class MathTest extends munit.FunSuite {
   // Сейчас это довольно стандартно для серии, мы будем представлять все как тип. 
   // В нашем случае мы снова будем представлять списки числовых типов как типы:
   
-  trait HList
-  class HNil extends HList
-  class ::[H <: Nat, T <: HList] extends HList
+  //     trait HList
+  //     class HNil extends HList
+  //     class ::[H <: Nat, T <: HList] extends HList
 
   // You may have seen similar definitions for heterogeneous lists (hence the HList name) in Shapeless and other libraries. 
   // In our case, our HList types are only restricted to Nat types.
@@ -623,7 +623,7 @@ class MathTest extends munit.FunSuite {
   // Бьюсь об заклад, вы привыкли кодировать операции как типы — именно 
   // об этом была арифметика во второй части — так что мы также закодируем это как тип:
 
-  trait Split[HL <: HList, L <: HList, R <: HList]
+  //     trait Split[HL <: HList, L <: HList, R <: HList]
 
   // In this case, HL is the original list, and L and R are the “left” and “right” halves of the list, respectively. 
   // We’re going to make the compiler compute instances of this Split type, and thus prove that a list can be halved. 
@@ -635,9 +635,9 @@ class MathTest extends munit.FunSuite {
   // Как и прежде, мы будем делать все в компаньоне Split, 
   // начиная с базового случая: пустой список делится пополам на два пустых списка:
 
-  object Split {
-    implicit val basic: Split[HNil, HNil, HNil] = new Split[HNil, HNil, HNil] {}
-  }
+  //     object Split {
+  //       implicit val basic: Split[HNil, HNil, HNil] = new Split[HNil, HNil, HNil] {}
+  //     }
 
   // This is one of the starting points. 
   // Another basic case is 
@@ -647,8 +647,8 @@ class MathTest extends munit.FunSuite {
   // Другой базовый случай заключается в том, 
   // что любой одноэлементный список также может быть разбит на себя слева и пустым справа:
 
-  implicit def basic2[N <: Nat]: Split[N :: HNil, N :: HNil, HNil] =
-    new Split[N :: HNil, N :: HNil, HNil] {}
+  //     implicit def basic2[N <: Nat]: Split[N :: HNil, N :: HNil, HNil] =
+  //       new Split[N :: HNil, N :: HNil, HNil] {}
 
   // In the above, we’re using the infix :: to make the types easier to read. 
   // So for any type N which is a “number”, 
@@ -667,10 +667,10 @@ class MathTest extends munit.FunSuite {
   // Общий индуктивный случай — это когда у вас есть список как минимум из двух элементов. 
   // Он будет иметь тип N1::N2::T, где T — какой-то другой тип списка (хвост списка).
 
-  implicit def inductive[H <: Nat, HH <: Nat, T <: HList, L <: HList, R <: HList]
-    (implicit split: Split[T, L, R])
-    : Split[H :: HH :: T, H :: L, HH :: R]
-    = new Split[H :: HH :: T, H :: L, HH :: R] {}
+  //     implicit def inductive[H <: Nat, HH <: Nat, T <: HList, L <: HList, R <: HList]
+  //       (implicit split: Split[T, L, R])
+  //       : Split[H :: HH :: T, H :: L, HH :: R]
+  //       = new Split[H :: HH :: T, H :: L, HH :: R] {}
 
   // In other words, if the tail T can be split into L and R - as detected 
   // by the compiler in the presence of an implicit 
@@ -687,12 +687,12 @@ class MathTest extends munit.FunSuite {
   // We can now add an apply method in Split:
   // Теперь мы можем добавить метод применения в Split:
 
-  def apply[HL <: HList, L <: HList, R <: HList](implicit split: Split[HL, L, R]) = split
+  //     def apply[HL <: HList, L <: HList, R <: HList](implicit split: Split[HL, L, R]) = split
 
   // and then test it out:
   // а затем протестируйте его:
 
-  // val validSplit: Split[_1 :: _2 :: _3 :: HNil, _1 :: _3 :: HNil, _2 :: HNil] = Split.apply
+  //     val validSplit: Split[_1 :: _2 :: _3 :: HNil, _1 :: _3 :: HNil, _2 :: HNil] = Split.apply
 
   // This works, because the compiler does the following:
   // 
@@ -711,7 +711,7 @@ class MathTest extends munit.FunSuite {
   // Conversely, the compiler will not compile your code if the split is invalid:
   // И наоборот, компилятор не будет компилировать ваш код, если разбиение неверно:
 
-  // val invalidSplit: Split[_1 :: _2 :: _3 :: HNil, _1 :: HNil, _2 :: _3 :: HNil] = Split.apply
+  //     val invalidSplit: Split[_1 :: _2 :: _3 :: HNil, _1 :: HNil, _2 :: _3 :: HNil] = Split.apply
 
   // Though technically viable, the compiler needs to have a single 
   // proof for a split, so we chose the approach of 
@@ -728,7 +728,7 @@ class MathTest extends munit.FunSuite {
   // You know the drill - we’ll create a new type which will have the meaning of a sorted merge of two lists:
   // Вы знаете упражнение — мы создадим новый тип, который будет иметь значение отсортированного слияния двух списков:
 
-  trait Merge[LA <: HList, LB <: HList, L <: HList]
+  //     trait Merge[LA <: HList, LB <: HList, L <: HList]
 
   // This means list LA merges with list LB and results in the final list L. 
   // We have two basic axioms we need to start with, 
@@ -738,12 +738,12 @@ class MathTest extends munit.FunSuite {
   // У нас есть две основные аксиомы, с которых нам нужно начать, 
   // и это любой список, объединенный с HNil, приводит к этому списку:
 
-  object Merge {
-    implicit def basicLeft[L <: HList]: Merge[HNil, L, L] =
-      new Merge[HNil, L, L] {}
-    implicit def basicRight[L <: HList]: Merge[L, HNil, L] =
-      new Merge[L, HNil, L] {}
-  }
+  //     object Merge {
+  //       implicit def basicLeft[L <: HList]: Merge[HNil, L, L] =
+  //         new Merge[HNil, L, L] {}
+  //       implicit def basicRight[L <: HList]: Merge[L, HNil, L] =
+  //         new Merge[L, HNil, L] {}
+  //     }
 
   //  This time we need two basic axioms because the types Merge[HNil, L, L] and 
   //  Merge[L, HNil, L] are different to the compiler.
@@ -786,15 +786,15 @@ class MathTest extends munit.FunSuite {
 
   // Поэтому нам нужно внедрить эти правила как неявные:
 
-  // implicit def inductiveLTE[HA <: Nat, TA <: HList, HB <: Nat, TB <: HList, O <: HList]
-  //   (implicit merged: Merge[TA, HB :: TB, O], lte: HA <= HB)
-  //   : Merge[HA :: TA, HB :: TB, HA :: O]
-  //   = new Merge[HA :: TA, HB :: TB, HA :: O] {}
-  // 
-  // implicit def inductiveGT[HA <: Nat, TA <: HList, HB <: Nat, TB <: HList, O <: HList]
-  //   (implicit merged: Merge[HA :: TA, TB, O], g: HB < HA)
-  //   : Merge[HA :: TA, HB :: TB, HB :: O]
-  //   = new Merge[HA :: TA, HB :: TB, HB :: O] {}
+  //     implicit def inductiveLTE[HA <: Nat, TA <: HList, HB <: Nat, TB <: HList, O <: HList]
+  //       (implicit merged: Merge[TA, HB :: TB, O], lte: HA <= HB)
+  //       : Merge[HA :: TA, HB :: TB, HA :: O]
+  //       = new Merge[HA :: TA, HB :: TB, HA :: O] {}
+  //     
+  //     implicit def inductiveGT[HA <: Nat, TA <: HList, HB <: Nat, TB <: HList, O <: HList]
+  //       (implicit merged: Merge[HA :: TA, TB, O], g: HB < HA)
+  //       : Merge[HA :: TA, HB :: TB, HB :: O]
+  //       = new Merge[HA :: TA, HB :: TB, HB :: O] {}
 
   // Let’s take the first case and read it: if the compiler can find an implicit Merge[TA, HB :: TB, O] and 
   // an implicit instance of HA <= HB (based on part 1), 
@@ -853,7 +853,7 @@ class MathTest extends munit.FunSuite {
   // By now you should be ahead of my writing - encode the sort operation as a type:
   // К настоящему времени вы должны опередить мое письмо — закодируйте операцию сортировки как тип:
 
-  trait Sort[L <: HList, O <: HList]
+  //     trait Sort[L <: HList, O <: HList]
 
   // where L is the input list and O is the output list. 
   // Let’s now think of the sorting axioms, again in the companion object of Sorted.
@@ -943,4 +943,151 @@ class MathTest extends munit.FunSuite {
   // Just plain amazing. The Scala compiler is awesome.
   // Просто потрясающе. Компилятор Scala великолепен.
 
+  // 14. Operation Figure It Out
+  // 14. Операция Разберись
+  // -----------------------------
+
+  // We can make the compiler awesomer.
+  // What we have above is just asking for the compiler 
+  // to validate whether sorting 4,3,5,1,2 results in 1,2,3,4,5. 
+  // We can go further and make the compiler figure that out by itself.
+
+  // Мы можем сделать компилятор круче. 
+  // То, что мы имеем выше, просто просит компилятор проверить, 
+  // приводит ли сортировка 4,3,5,1,2 к 1,2,3,4,5. 
+  // Мы можем пойти дальше и заставить компилятор разобраться с этим самостоятельно.
+
+  // For this, we’ll use the trick we used in Part 2, 
+  // when we made the compiler figure out what the sum of two numbers was supposed to be. 
+  // We’ll do the same here.
+
+  // Для этого воспользуемся приемом, который использовали в части 2, 
+  // когда заставили компилятор вычислить, какой должна быть сумма двух чисел. 
+  // Мы сделаем то же самое здесь.
+
+  // Instead of having the Sort type take two arguments, 
+  // let’s have it take only one and 
+  // store the result as a type member instead:
+
+  // Вместо того, чтобы тип Sort принимал два аргумента, 
+  // давайте сделаем так, чтобы он принимал только один и 
+  // вместо этого сохранял результат как член типа:
+
+  //     trait Sort[L <: HList] {
+  //         type Result <: HList
+  //     }
+
+  // And in the Sort companion object, we’ll create an auxiliary type with two type arguments:
+  // А в объекте-компаньоне Sort мы создадим вспомогательный тип с двумя аргументами типа:
+
+  //    type SortOp[L <: HList, O <: HList] = Sort[L] {
+  //      type Result = O
+  //    }
+
+  // Now with this SortOp type alias, we’ll make our implicits return this SortOp type, 
+  // but since we can’t instantiate it by itself, 
+  // we’ll need to create a Sort instance with the right type member:
+
+  // Теперь с этим псевдонимом типа SortOp мы заставим наши имплициты возвращать этот тип SortOp, 
+  // но, поскольку мы не можем создать его экземпляр сам по себе, 
+  // нам нужно создать экземпляр Sort с правильным элементом типа:
+
+  //     implicit val basicNil: SortOp[HNil, HNil] =
+  //       new Sort[HNil] { type Result = HNil }
+
+  // The signature looks identical to what we had before 
+  // (we’re returning an instance with two type arguments), 
+  // but in the implementation we’re returning an instance of Sort with a single type argument and 
+  // the right type member inside. This is the trick 
+  // we’ll use to make the compiler figure out the result type for us.
+
+  // Сигнатура выглядит идентично тому, что у нас было раньше 
+  // (мы возвращаем экземпляр с двумя аргументами типа), 
+  // но в реализации мы возвращаем экземпляр Sort с одним аргументом типа и 
+  // членом правильного типа внутри. Это трюк, который мы будем использовать, 
+  // чтобы заставить компилятор определить тип результата для нас.
+
+  // A similar implementation for the other basic axiom:
+  // Аналогичная реализация для другой основной аксиомы:
+
+  //     implicit def basicOne[H <: Nat]: SortOp[H :: HNil, H :: HNil] =
+  //       new Sort[H :: HNil] { type Result = H :: HNil }
+
+  // And a similar approach (with changes in multiple places for the inductive implicit:
+  // И аналогичный подход (с изменениями в нескольких местах для индуктивного неявного:
+
+  //     implicit def inductive[I <: HList, L <: HList, R <: HList, SL <: HList, SR <: HList, O <: HList]
+  //       (implicit
+  //        split: Split[I, L, R],
+  //        sl: SortOp[L, SL],
+  //        sr: SortOp[R, SR],
+  //        merged: Merge[SL, SR, O])
+  //       : SortOp[I, O]
+  //       = new Sort[I] { type Result = O }
+
+  // In other words, the result is 1, 2, 3, 4, 5.
+  // Другими словами, результат равен 1, 2, 3, 4, 5.
+
+  // We love you, compiler.
+  // Мы любим тебя, компилятор.
+
+  // 15. The Final Code
+  // 15. Окончательный код
+  // ------------------------------------------------------------------
+
+  // This is the final version of what we wrote in this part. 
+  // Stick the first two parts before it and 
+  // you’ll have the greatest merge sort in Scala the world has ever seen.
+
+  // Это финальная версия того, что мы написали в этой части. 
+  // Вставьте первые две части перед ним, и 
+  // вы получите лучшую сортировку слиянием в Scala, которую когда-либо видел мир.
+
+  trait HList
+  class HNil extends HList
+  class ::[H <: Nat, T <: HList] extends HList
+  
+  trait Split[HL <: HList, L <: HList, R <: HList]
+  object Split {
+    implicit def basic: Split[HNil, HNil, HNil] = new Split[HNil, HNil, HNil] {}
+    implicit def basic2[H <: Nat]: Split[H :: HNil, H :: HNil, HNil] = new Split[H :: HNil, H :: HNil, HNil] {}
+    implicit def inductive[H <: Nat, HH <: Nat, T <: HList, L <: HList, R <: HList] (implicit split: Split[T, L, R]): Split[H :: HH :: T, H :: L, HH :: R] =
+      new Split[H :: HH :: T, H :: L, HH :: R] {}
+    def apply[HL <: HList, L <: HList, R <: HList](implicit split: Split[HL, L, R]) = split
+  }
+
+  val validSplit: Split[_1 :: _2 :: _3 :: HNil, _1 :: _3 :: HNil, _2 :: HNil] = Split.apply // good
+  // val invalidSplit: Split[_1 :: _2 :: _3 :: HNil, _1 :: _2 :: HNil, _3 :: HNil] = Split.apply // doesn't compile
+
+  trait Merge[LA <: HList, LB <: HList, L <: HList]
+  object Merge {
+    implicit def basicLeft[L <: HList]: Merge[HNil, L, L] = new Merge[HNil, L, L] {}
+    implicit def basicRight[L <: HList]: Merge[L, HNil, L] = new Merge[L, HNil, L] {}
+    implicit def inductiveLTE[HA <: Nat, TA <: HList, HB <: Nat, TB <: HList, O <: HList] (implicit merged: Merge[TA, HB :: TB, O], lte: HA <= HB)
+    : Merge[HA :: TA, HB :: TB, HA :: O] = new Merge[HA :: TA, HB :: TB, HA :: O] {}
+    implicit def inductiveGT[HA <: Nat, TA <: HList, HB <: Nat, TB <: HList, O <: HList] (implicit merged: Merge[HA :: TA, TB, O], g: HB < HA)
+    : Merge[HA :: TA, HB :: TB, HB :: O] = new Merge[HA :: TA, HB :: TB, HB :: O] {}
+    def apply[LA <: HList, LB <: HList, O <: HList](implicit merged: Merge[LA, LB, O]) = merged
+  }
+
+  val validMerge: Merge[_1 :: _3 :: HNil, _2 :: HNil, _1 :: _2 :: _3 :: HNil] = Merge.apply // compiles
+
+  trait Sort[L <: HList] {
+    type Result <: HList
+  }
+  object Sort {
+    type SortOp[L <: HList, O <: HList] = Sort[L] { type Result = O }
+    implicit val basicNil: SortOp[HNil, HNil] = new Sort[HNil] { type Result = HNil }
+    implicit def basicOne[H <: Nat]: SortOp[H :: HNil, H :: HNil] = new Sort[H :: HNil] { type Result = H :: HNil }
+    implicit def inductive[I <: HList, L <: HList, R <: HList, SL <: HList, SR <: HList, O <: HList]
+    (implicit
+    split: Split[I, L, R],
+    sl: SortOp[L, SL],
+    sr: SortOp[R, SR],
+    merged: Merge[SL, SR, O])
+    : SortOp[I, O]
+    = new Sort[I] { type Result = O }
+
+    def apply[L <: HList](implicit sorted: Sort[L]): SortOp[L, sorted.Result] = sorted
+  }  
 }
