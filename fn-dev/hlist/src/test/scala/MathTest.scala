@@ -1046,7 +1046,7 @@ class MathTest extends munit.FunSuite {
   trait HList
   class HNil extends HList
   class ::[H <: Nat, T <: HList] extends HList
-  
+
   trait Split[HL <: HList, L <: HList, R <: HList]
   object Split {
     implicit def basic: Split[HNil, HNil, HNil] = new Split[HNil, HNil, HNil] {}
@@ -1090,4 +1090,6 @@ class MathTest extends munit.FunSuite {
 
     def apply[L <: HList](implicit sorted: Sort[L]): SortOp[L, sorted.Result] = sorted
   }  
+
+  // println(show(Sort[_4 :: _3 :: _5 :: _1 :: _2 :: HNil]))
 }
