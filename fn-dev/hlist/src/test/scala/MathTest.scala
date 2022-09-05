@@ -730,8 +730,13 @@ class MathTest extends munit.FunSuite {
 
   trait Merge[LA <: HList, LB <: HList, L <: HList]
 
-  // This means list LA merges with list LB and results in the final list L. We have two basic axioms we need to start with, and that is any list merged with HNil results in that list:
-  // Это означает, что список LA объединяется со списком LB и приводит к окончательному списку L. У нас есть две основные аксиомы, с которых нам нужно начать, и это любой список, объединенный с HNil, приводит к этому списку:
+  // This means list LA merges with list LB and results in the final list L. 
+  // We have two basic axioms we need to start with, 
+  // and that is any list merged with HNil results in that list:
+
+  // Это означает, что список LA объединяется со списком LB и приводит к окончательному списку L. 
+  // У нас есть две основные аксиомы, с которых нам нужно начать, 
+  // и это любой список, объединенный с HNil, приводит к этому списку:
 
   object Merge {
     implicit def basicLeft[L <: HList]: Merge[HNil, L, L] =
@@ -844,4 +849,98 @@ class MathTest extends munit.FunSuite {
   // 13. Operation 3: The Sort
   // 13. Операция 3: Сортировка
   // ----------------------------
+
+  // By now you should be ahead of my writing - encode the sort operation as a type:
+  // К настоящему времени вы должны опередить мое письмо — закодируйте операцию сортировки как тип:
+
+  trait Sort[L <: HList, O <: HList]
+
+  // where L is the input list and O is the output list. 
+  // Let’s now think of the sorting axioms, again in the companion object of Sorted.
+
+  // где L — входной список, а O — выходной список. 
+  // Давайте теперь подумаем об аксиомах сортировки, опять же, в объекте-компаньоне Sorted.
+
+  // The first basic axiom is that an empty list should stay unchanged:
+  // Первая базовая аксиома заключается в том, что пустой список должен оставаться неизменным:
+
+  // implicit val basicNil: Sorted[HNil, HNil] = new Sorted[HNil, HNil] {}
+
+  // Same for a list of one element:
+  // То же самое для списка из одного элемента:
+
+  // implicit def basicOne[H <: Nat]: Sorted[H :: HNil, H :: HNil] =
+  //   new Sorted[H :: HNil, H :: HNil] {}
+
+  // Now the inductive axiom is the killer one, 
+  // as it will require all our previous work. 
+  // We’ll need the compiler to split the list, 
+  // sort the halves and merge them back. 
+  // Here’s how we can encode that:
+
+  // Теперь индуктивная аксиома является убийственной, 
+  // так как потребует всей нашей предыдущей работы. 
+  // Нам понадобится компилятор, чтобы разделить список, 
+  // отсортировать половинки и объединить их обратно. 
+  // Вот как мы можем это закодировать:
+
+  // implicit def inductive[I <: HList, L <: HList, R <: HList, SL <: HList, SR <: HList, O <: HList]
+  //   (implicit
+  //    split: Split[I, L, R],
+  //    sl: Sort[L, SL],
+  //    sr: Sort[R, SR],
+  //    merged: Merge[SL, SR, O])
+  //   : Sort[I, O]
+  //   = new Sort[I, O] {}
+
+  // This reads as:
+  // 
+  //     given a Split of the input list into left (L) and right (R)
+  //     given an existing instance of Sort[L, SL]
+  //     given an existing instance of Sort[R, SR]
+  //     given a Merge of SL and SR (which are sorted) into O
+
+  // Это читается как:
+  // 
+  //      учитывая разделение входного списка на левый (L) и правый (R)
+  //      учитывая существующий экземпляр Sort[L, SL]
+  //      учитывая существующий экземпляр Sort[R, SR]
+  //      учитывая слияние SL и SR (которые отсортированы) в O
+
+  // then the compiler can automatically build an instance of Sort[I, O]. 
+  // With a little bit of practice, this reads like natural language, doesn’t it? 
+  // Split, sort left, sort right, merge.
+
+  // тогда компилятор может автоматически построить экземпляр Sort[I, O]. 
+  // С небольшой практикой это читается как естественный язык, не так ли? 
+  // Разделить, отсортировать слева, отсортировать справа, объединить.
+
+  // Let’s stick an apply method there:
+  // Прикрепим туда метод apply:  
+
+  // def apply[L <: HList, O <: HList](implicit sorted: Sorted[L, O]) = sorted
+
+  // And we should be free to test!
+  // И мы должны быть свободны для тестирования!
+
+  //    val validSort: Sort[
+  //      _4 :: _3 :: _5 :: _1 :: _2 :: HNil,
+  //      _1 :: _2 :: _3 :: _4 :: _5 :: HNil
+  //      ] = Sort.apply
+
+  // This compiles, because the compiler will bend over backwards 
+  // to try to find an implicit for every operation we need: 
+  // the split of _4 :: _3 :: _5 :: _1 :: _2 :: HNil, 
+  // the sorting of the smaller lists - which involve another
+  // splitting - and the merge of _2 :: _4 :: _5 :: HNil with _1 :: _3 :: HNil into the final result.
+  
+  // Это компилируется, потому что компилятор будет из кожи вон лезть, 
+  // чтобы попытаться найти неявное для каждой операции, которая нам нужна: 
+  // разделение _4::_3::_5::_1::_2::HNil, 
+  // сортировка меньших списков — которые влекут за собой еще одно
+  // расщепление - и слияние _2::_4::_5::HNil с _1::_3::HNil в окончательный результат.
+
+  // Just plain amazing. The Scala compiler is awesome.
+  // Просто потрясающе. Компилятор Scala великолепен.
+
 }
