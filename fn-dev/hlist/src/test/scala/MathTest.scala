@@ -571,4 +571,277 @@ class MathTest extends munit.FunSuite {
   ///////////////////////////////////////////////////////////////////
   // https://blog.rockthejvm.com/type-level-programming-part-3/
   
+  // 10. Lists as types
+  // 10. Списки как типы
+  // --------------------
+
+  // As is now pretty standard for the series, we’ll represent everything as a type. 
+  // In our case, we’ll represent lists of number-types as types again:
+
+  // Сейчас это довольно стандартно для серии, мы будем представлять все как тип. 
+  // В нашем случае мы снова будем представлять списки числовых типов как типы:
+  
+  trait HList
+  class HNil extends HList
+  class ::[H <: Nat, T <: HList] extends HList
+
+  // You may have seen similar definitions for heterogeneous lists (hence the HList name) in Shapeless and other libraries. 
+  // In our case, our HList types are only restricted to Nat types.
+
+  // Вы могли видеть подобные определения для разнородных списков (отсюда и название HList) в Shapeless и других библиотеках. 
+  // В нашем случае наши типы HList ограничены только типами Nat.
+
+  // We’re going to sort these HList types into other HList types, all inferred by the compiler. 
+  // For that, we’re going to use a merge-sort algorithm. You must know it already. We need to
+  // 
+  //     split the lists in half
+  //     sort the halves
+  //     then merge the halves back in a sorted order
+  // 
+  // Every operation will be encoded as a type, and all results will be computed by the compiler via implicits.
+
+  // Мы собираемся отсортировать эти типы HList по другим типам HList, которые выводятся компилятором. 
+  // Для этого воспользуемся алгоритмом сортировки слиянием. Вы должны знать это уже. Нам надо
+  // 
+  //      разделить списки пополам
+  //      рассортировать половинки
+  //      затем объедините половинки обратно в отсортированном порядке
+  // 
+  // Каждая операция будет закодирована как тип, и все результаты будут вычислены компилятором с помощью неявных выражений.
+
+  // 11. Operation 1: The Split
+  // 11. Операция 1: Раскол
+  // ---------------------------------------------------------
+
+  // We need to be able to split a list in exactly half or at most one element difference 
+  // (if the list has an odd number of elements). 
+  // I bet you’re used to encoding operations as types - this is 
+  // what the second part’s arithmetic was about - so we’ll encode this as a type as well:
+
+  // Нам нужно иметь возможность разделить список ровно пополам или не более чем на одну разницу элементов 
+  // (если список имеет нечетное количество элементов). 
+  // Бьюсь об заклад, вы привыкли кодировать операции как типы — именно 
+  // об этом была арифметика во второй части — так что мы также закодируем это как тип:
+
+  trait Split[HL <: HList, L <: HList, R <: HList]
+
+  // In this case, HL is the original list, and L and R are the “left” and “right” halves of the list, respectively. 
+  // We’re going to make the compiler compute instances of this Split type, and thus prove that a list can be halved. 
+  // As before, we’re going to do everything in a companion of Split, 
+  // starting with the basic case: an empty list is halved into two empty lists:
+  
+  // В данном случае HL — исходный список, а L и R — «левая» и «правая» половины списка соответственно. 
+  // Мы заставим компилятор вычислять экземпляры этого типа Split и таким образом докажем, что список можно разделить пополам. 
+  // Как и прежде, мы будем делать все в компаньоне Split, 
+  // начиная с базового случая: пустой список делится пополам на два пустых списка:
+
+  object Split {
+    implicit val basic: Split[HNil, HNil, HNil] = new Split[HNil, HNil, HNil] {}
+  }
+
+  // This is one of the starting points. 
+  // Another basic case is 
+  // that any one-element list can also be split into itself on the left, and empty on the right:
+
+  // Это одна из отправных точек. 
+  // Другой базовый случай заключается в том, 
+  // что любой одноэлементный список также может быть разбит на себя слева и пустым справа:
+
+  implicit def basic2[N <: Nat]: Split[N :: HNil, N :: HNil, HNil] =
+    new Split[N :: HNil, N :: HNil, HNil] {}
+
+  // In the above, we’re using the infix :: to make the types easier to read. 
+  // So for any type N which is a “number”, 
+  // the compiler can automatically create an instance of Split[N :: HNil, N :: HNil, HNil], 
+  // which is proof of the existence of a split of a list of one element into itself and the empty type.
+
+  // В приведенном выше примере мы используем инфикс :: для облегчения чтения типов. 
+  // Таким образом, для любого типа N, который является «числом», 
+  // компилятор может автоматически создать экземпляр Split[N::HNil, N::HNil, HNil], 
+  // что является доказательством существования разделения списка из одного элемента. в себя и пустой тип.
+
+
+  // The general inductive case, is when you have a list with at least two elements. 
+  // That will have the type N1 :: N2 :: T, where T is some other list type (the tail of the list).
+
+  // Общий индуктивный случай — это когда у вас есть список как минимум из двух элементов. 
+  // Он будет иметь тип N1::N2::T, где T — какой-то другой тип списка (хвост списка).
+
+  implicit def inductive[H <: Nat, HH <: Nat, T <: HList, L <: HList, R <: HList]
+    (implicit split: Split[T, L, R])
+    : Split[H :: HH :: T, H :: L, HH :: R]
+    = new Split[H :: HH :: T, H :: L, HH :: R] {}
+
+  // In other words, if the tail T can be split into L and R - as detected 
+  // by the compiler in the presence of an implicit 
+  // Split[T,L,R] then N1 :: N2 :: T 
+  // can be split into N1 :: L and N2 :: R. 
+  // One number goes to the left, the other to the right.
+
+  // Другими словами, если хвост T можно разбить на L и R — как 
+  // это обнаружено компилятором при наличии неявного 
+  // Split[T,L,R], то N1 :: N2 :: T 
+  // можно разбить на N1 :: L и N2::R. 
+  // Одно число идет влево, другое вправо.
+
+  // We can now add an apply method in Split:
+  // Теперь мы можем добавить метод применения в Split:
+
+  def apply[HL <: HList, L <: HList, R <: HList](implicit split: Split[HL, L, R]) = split
+
+  // and then test it out:
+  // а затем протестируйте его:
+
+  // val validSplit: Split[_1 :: _2 :: _3 :: HNil, _1 :: _3 :: HNil, _2 :: HNil] = Split.apply
+
+  // This works, because the compiler does the following:
+  // 
+  //  it requires an implicit Split[_1 :: _2 :: _3 :: HNil, _1 :: _3 :: HNil, _2 :: HNil]
+  //  it can build that implicit by running inductive, but it needs an implicit Split[_3 :: HNil, _3 :: HNil, HNil]
+  //  it can build that implicit by running basic2[_3]
+  //  it will then build the dependent implicits as required
+
+  // Это работает, потому что компилятор делает следующее:
+  // 
+  //    для этого требуется неявный Split[_1 :: _2 :: _3 :: HNil, _1 :: _3 :: HNil, _2 :: HNil]
+  //    он может построить это неявное, запустив индуктивный, но ему нужен неявный Split[_3 :: HNil, _3 :: HNil, HNil]
+  //    это можно построить, запустив basic2[_3]
+  //    затем он построит зависимые имплициты по мере необходимости
+
+  // Conversely, the compiler will not compile your code if the split is invalid:
+  // И наоборот, компилятор не будет компилировать ваш код, если разбиение неверно:
+
+  // val invalidSplit: Split[_1 :: _2 :: _3 :: HNil, _1 :: HNil, _2 :: _3 :: HNil] = Split.apply
+
+  // Though technically viable, the compiler needs to have a single 
+  // proof for a split, so we chose the approach of 
+  // “one number to the left, one to the right” and consider everything else invalid.
+
+  // Хотя технически это возможно, компилятору необходимо иметь единственное 
+  // доказательство для разделения, поэтому мы выбрали подход 
+  // «одно число слева, одно справа» и считаем все остальное недействительным.
+
+  // 12. Operation 2: The Merge
+  // 12. Операция 2: Слияние
+  // ----------------------------------
+
+  // You know the drill - we’ll create a new type which will have the meaning of a sorted merge of two lists:
+  // Вы знаете упражнение — мы создадим новый тип, который будет иметь значение отсортированного слияния двух списков:
+
+  trait Merge[LA <: HList, LB <: HList, L <: HList]
+
+  // This means list LA merges with list LB and results in the final list L. We have two basic axioms we need to start with, and that is any list merged with HNil results in that list:
+  // Это означает, что список LA объединяется со списком LB и приводит к окончательному списку L. У нас есть две основные аксиомы, с которых нам нужно начать, и это любой список, объединенный с HNil, приводит к этому списку:
+
+  object Merge {
+    implicit def basicLeft[L <: HList]: Merge[HNil, L, L] =
+      new Merge[HNil, L, L] {}
+    implicit def basicRight[L <: HList]: Merge[L, HNil, L] =
+      new Merge[L, HNil, L] {}
+  }
+
+  //  This time we need two basic axioms because the types Merge[HNil, L, L] and 
+  //  Merge[L, HNil, L] are different to the compiler.
+
+  //  The inductive implicits are interesting. 
+  // Considering two lists with at least an element each, 
+  // say HA :: TA and HB :: TB, we need to compare their heads HA and HB:
+
+  //      if HA <= HB, then HA must stay first in the result
+  //      if HB < HA, then HB must stay first in the result
+
+  //  The question is, what’s the result?
+
+  //      if HA <= HB, then the compiler must find a merge between TA and 
+  //         the other list HB :: TB, so it’ll need an implicit instance of 
+  //         Merge[TA, HB :: TB, O], where O is some HList, and the final result will be HA :: O
+  //      if HB < HA, it’s the other way around - the compiler needs to find 
+  //         an implicit of Merge[HA :: TA, TB, O] and then the final result will be HB :: O
+
+  //  So we need to embed those rules as implicits:
+
+  // Это означает, что список LA объединяется со списком LB и приводит к окончательному списку L. 
+  // У нас есть две основные аксиомы, с которых нам нужно начать, и это любой список, объединенный с HNil, 
+  // приводит к этому списку: На этот раз нам нужны две основные аксиомы, 
+  // потому что типы Merge[HNil, L, L] и Merge[L, HNil, L] отличаются от компилятора.
+
+  // Индуктивные имплициты интересны. Рассмотрим два списка, в каждом из которых есть хотя бы один элемент, 
+  // скажем, HA::TA и HB::TB, нам нужно сравнить их заголовки HA и HB:
+
+  //     если HA <= HB, то HA должен остаться первым в результате
+  //     если HB < HA, то HB должен остаться первым в результате
+
+  // Вопрос в том, каков результат?
+
+  //     если HA <= HB, то компилятор должен найти слияние между TA и другим списком HB::TB, 
+  //       поэтому ему потребуется неявный экземпляр Merge[TA, HB::TB, O], 
+  //       где O — некоторый HList , и окончательный результат будет HA::O
+  //     если HB < HA, то наоборот — компилятору нужно найти имплицит Merge[HA::TA, TB, O] 
+  //       и тогда окончательный результат будет HB::O
+
+  // Поэтому нам нужно внедрить эти правила как неявные:
+
+  // implicit def inductiveLTE[HA <: Nat, TA <: HList, HB <: Nat, TB <: HList, O <: HList]
+  //   (implicit merged: Merge[TA, HB :: TB, O], lte: HA <= HB)
+  //   : Merge[HA :: TA, HB :: TB, HA :: O]
+  //   = new Merge[HA :: TA, HB :: TB, HA :: O] {}
+  // 
+  // implicit def inductiveGT[HA <: Nat, TA <: HList, HB <: Nat, TB <: HList, O <: HList]
+  //   (implicit merged: Merge[HA :: TA, TB, O], g: HB < HA)
+  //   : Merge[HA :: TA, HB :: TB, HB :: O]
+  //   = new Merge[HA :: TA, HB :: TB, HB :: O] {}
+
+  // Let’s take the first case and read it: if the compiler can find an implicit Merge[TA, HB :: TB, O] and 
+  // an implicit instance of HA <= HB (based on part 1), 
+  // then the compiler will be able to automatically create an instance of Merge[HA :: TA, HB :: TB, HA :: O], 
+  // which means that HA stays at the front of the result.
+
+  // Возьмем первый случай и прочитаем его: если компилятор может найти неявный Merge[TA, HB::TB, O] и 
+  // неявный экземпляр HA <= HB (на основе части 1), 
+  // то компилятор сможет автоматически создать экземпляр Merge[HA::TA, HB::TB, HA::O], 
+  // что означает, что HA остается впереди результата.
+
+  // The other case reads in the exact same way except the conditions are the opposite: HB < HA, 
+  // so HB needs to stay at the front of the result.
+
+  // Другой случай читается точно так же, за исключением того, что условия противоположны: HB < HA, 
+  // поэтому HB должен оставаться впереди результата.
+
+  // Finally, if we add an apply method to Merge:
+  // Наконец, если мы добавим метод применения к Merge:
+
+  // def apply[LA <: HList, LB <: HList, O <: HList](implicit merged: Merge[LA, LB, O]) = merged
+
+  // then we should be able to test it:
+  // то мы должны быть в состоянии проверить это:
+
+  // val validMerge: Merge[_1 :: _3 :: HNil, _2 :: HNil, _1 :: _2 :: _3 :: HNil] = Merge.apply
+
+  // This works, because the compiler
+  //   
+  //     requires an implicit Merge[_1 :: _3 :: HNil, _2 :: HNil, _1 :: _2 :: _3 :: HNil]
+  //     will run the inductiveLTE, requiring an implicit Merge[_3 :: HNil, _2 :: HNil, _2 :: _3 :: HNil] 
+  //       and an implicit _1 < _2, which we’ll assume true by virtue of Part 1
+  //     will run inductiveGT, requiring an implicit Merge[_3 :: HNil, HNil, _3 :: HNil]
+  //     will run basicLeft, creating an implicit Merge[_3 :: HNil, HNil, _3 :: HNil]
+  //     will create all the dependent implicits in reverse order
+  // 
+  // Conversely, if you try an invalid merge, the compiler won’t compile your code 
+  // because it can’t find the appropriate implicits.
+
+  // Это работает, потому что компилятор
+  // 
+  //      требует неявного Merge[_1 :: _3 :: HNil, _2 :: HNil, _1 :: _2 :: _3 :: HNil]
+  //      запустит inductiveLTE, требуя неявного Merge[_3::HNil, _2::HNil, _2::_3::HNil] 
+  //        и неявного _1 < _2, которое мы будем считать истинным в силу Части 1.
+  //      запустит inductiveGT, требуя неявного Merge[_3 :: HNil, HNil, _3 :: HNil]
+  //      запустит basicLeft, создав неявное Merge[_3::HNil, HNil, _3::HNil]
+  //      создаст все зависимые имплициты в обратном порядке
+  // 
+  // И наоборот, если вы попробуете недопустимое слияние, компилятор не скомпилирует ваш код, 
+  // потому что не сможет найти подходящие имплициты.
+
+  // 13. Operation 3: The Sort
+  // 13. Операция 3: Сортировка
+  // ----------------------------
 }
