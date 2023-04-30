@@ -232,6 +232,38 @@ fn test_block() {
 #[allow(dead_code)]
 const TAIL_MARKER : &str = "TAIL";
 
+/// Хвост
+pub struct Tail;
+
+impl Tail {
+  /// Чтение блока по значению хвоста
+  /// 
+  /// # Параметры
+  /// - `position` - указатель на конец хвоста, первый байт после хвоста
+  /// - `source` - источник данных
+  pub fn try_read_block_at<Source>( position: u64, source: &Source ) -> Result<(Block,u64), BlockErr> 
+  where Source : ReadBytesFrom
+  {
+    if position<8 { return Err(BlockErr(format!("position to small < 8"))) }
+
+    let mut tail_data :[u8;8] = [0; 8];
+    let reads = source.read_from((position as usize)-8, &mut tail_data)?;
+    if reads < tail_data.len() { return Err(BlockErr(format!("read to small < 8"))) }
+
+    let marker_matched = (0usize .. 4usize).fold( true, |res,idx| res && TAIL_MARKER.as_bytes()[idx] == tail_data[idx] );
+    if ! marker_matched { return Err(BlockErr(format!("tail marker not matched"))) }
+
+    let total_size: [u8; 4] = [ tail_data[4],tail_data[5],tail_data[6],tail_data[7] ];
+    let total_size = u32::from_le_bytes(total_size);
+
+    let next_pos = (position as i128) - (total_size as i128);
+    if next_pos < 0 { return Err(BlockErr(format!("tail marker pointer ref outside source"))) }
+
+    let next_pos = next_pos as u64;
+    Block::read_from(next_pos, source)
+  }
+}
+
 impl Block {
   /// Формирование массива байтов представлющих блок
   #[allow(dead_code)]
@@ -282,6 +314,24 @@ impl BlockHead {
   pub fn to_bytes( &self, data_size:u32 ) -> Box<Vec<u8>> {
     write_block_head( self.clone(), data_size, 0)
   }
+
+  /// Чтение заголовка из указанной позиции
+  pub fn read_form<S>( position:usize, source:&S ) -> Result<(BlockHead, BlockHeadSize, BlockDataSize, BlockTailSize), BlockErr> 
+  where S: ReadBytesFrom
+  {
+    let mut buff: [u8; PREVIEW_SIZE] = [0; PREVIEW_SIZE];
+    let reads = source.read_from(position, &mut buff)?;
+    if reads < (HEAD_MIN_SIZE as usize) {
+      return Err(BlockErr(format!("read to small head data")))
+    }
+
+    let mut buff1 = Vec::<u8>::new();
+    buff1.resize(reads, 0);
+    for i in 0..reads { buff1[i] = buff[i] }
+    
+    let res = Self::from_bytes(Box::new(buff1))?;
+    Ok(res)
+  }
 }
 
 /// Ошибка при операциях с блоком лога
@@ -310,6 +360,7 @@ impl From<ABuffError> for BlockErr {
 
 #[allow(dead_code)]
 const READ_BUFF_SIZE: usize = 1024*8;
+const PREVIEW_SIZE:usize = 1024 * 64;
 
 impl Block {
   /// Чтение блока из массива байт
@@ -317,7 +368,6 @@ impl Block {
   pub fn read_from<Source>( position: u64, file: &Source ) -> Result<(Self,u64), BlockErr> 
   where Source : ReadBytesFrom
   {
-    const PREVIEW_SIZE:usize = 1024 * 64;
     let mut head_preview: [u8;PREVIEW_SIZE] = [0; PREVIEW_SIZE];
 
     let reads = file.read_from(position as usize, &mut head_preview)?;

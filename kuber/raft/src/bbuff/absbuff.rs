@@ -157,6 +157,8 @@ impl WriteBytesTo for FileBuff {
       let expect = data_provider.len();
       return Err(ABuffError(format!("partial writed, writed {writed} bytes, expect {expect}")));
     }
+
+    file.flush()?;
     
     Ok(())
   }
