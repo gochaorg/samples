@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use super::block;
+use super::block::*;
 use super::super::bbuff::absbuff::*;
 
 #[cfg_attr(doc, aquamarine::aquamarine)]
@@ -99,20 +99,135 @@ pub struct LogFile<FlatBuff>
 where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 {
   buff: FlatBuff,
-  count: Option<u32>,
+  last_block_id: Option<BlockId>,
+  last_block_begin: Option<FileOffset>,
+  last_block_size: Option<u64>,
+}
+
+#[derive(Clone, Debug)]
+pub enum LogErr {
+  Generic(String),
+  FlatBuff(ABuffError),
+  Block(BlockErr)
+}
+
+impl From<ABuffError> for LogErr {
+  fn from(value: ABuffError) -> Self {
+    LogErr::FlatBuff(value.clone())
+  }
+}
+
+impl From<BlockErr> for LogErr {
+  fn from(value: BlockErr) -> Self {
+    LogErr::Block(value.clone())
+  }
 }
 
 impl<FlatBuff> LogFile<FlatBuff> 
 where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 {
-  fn new( buff:FlatBuff ) -> Self {
-    LogFile {
-      buff: buff,
-      count: None
+  fn new( buff:FlatBuff ) -> Result<Self, LogErr> {
+    let buff_size = buff.bytes_count()?;
+    if buff_size == 0 {
+      return Ok(
+        LogFile {
+          buff: buff,
+          last_block_id: None,
+          last_block_begin: None,
+          last_block_size: None,
+        }
+      )
+    }
+
+    if buff_size > (u64::MAX as usize) {
+      return Err(
+        LogErr::Generic(format!("buff to big"))
+      );
+    }
+
+    let block_head_raw 
+      = Tail::try_read_head_at( buff_size as u64, &buff )?;
+
+    let block_size = block_head_raw.clone().block_size();
+
+    let (head, _, _, _) = block_head_raw;
+
+    Ok(
+      LogFile {
+        buff: buff,
+        last_block_id: Some(head.block_id),
+        last_block_begin: Some(FileOffset::new( (buff_size as u64) - block_size) ),
+        last_block_size: Some(block_size),
+      }
+    )
+  }
+
+  fn append_block( &mut self, block: &Block ) -> Result<(), LogErr> {
+    match self.last_block_id {
+      None => {
+        self.append_first_block(block)
+      },
+      Some(last_block_id) => {
+        match self.last_block_begin {
+          None => { return Err(LogErr::Generic(format!("internal state error, at {}:{}", file!(), line!() ))) },
+          Some( last_block_offset ) => {
+            match self.last_block_size {
+              None => { return Err(LogErr::Generic(format!("internal state error, at {}:{}", file!(), line!() ))) },
+              Some( last_block_size ) => {
+                self.append_next_block(last_block_offset.value() + last_block_size, block)
+              }
+            }
+          }
+        }
+      }
     }
   }
 
-  // fn get_count() -> u32 {
-  //   todo!()
-  // }
+  fn append_first_block( &mut self, block:&Block ) -> Result<(), LogErr> {
+    self.append_next_block(0u64, block)
+  }
+
+  fn append_next_block( &mut self, position:u64, block:&Block ) -> Result<(), LogErr> {
+    let block_size = block.write_to(position, &mut self.buff)?;
+    self.last_block_id = Some(block.head.block_id);
+    self.last_block_begin = Some(FileOffset::new(position));
+    self.last_block_size = Some(block_size as u64);
+
+    Ok(())
+  }
+}
+
+#[test]
+fn test_empty_create() {
+  let bb = ByteBuff::new_empty_unlimited();
+  let log = LogFile::new(bb);
+  assert!( log.is_ok() )
+}
+
+#[test]
+fn test_raw_append_block() {
+  let bb = ByteBuff::new_empty_unlimited();
+
+  let mut log = LogFile::new(bb.clone()).unwrap();
+
+  let b0 = Block {
+    head: BlockHead { block_id: BlockId::new(0), data_type_id: DataId::new(0), back_refs: BackRefs::default(), block_options: BlockOptions::default() },
+    data: Box::new(vec![0u8, 1, 2])
+  };
+
+  let b1 = Block {
+    head: BlockHead { block_id: BlockId::new(1), data_type_id: DataId::new(0), back_refs: BackRefs::default(), block_options: BlockOptions::default() },
+    data: Box::new(vec![10u8, 11, 12])
+  };
+
+  let b2 = Block {
+    head: BlockHead { block_id: BlockId::new(2), data_type_id: DataId::new(0), back_refs: BackRefs::default(), block_options: BlockOptions::default() },
+    data: Box::new(vec![10u8, 11, 12])
+  };
+
+  log.append_block(&b0).unwrap();
+  log.append_block(&b1).unwrap();
+  log.append_block(&b2).unwrap();
+
+  println!("data len {}", bb.bytes_count().unwrap());
 }

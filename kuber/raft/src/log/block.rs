@@ -24,7 +24,7 @@
 //! | head.back_ref.b_id   | u32          | Идентификатор блока |
 //! | head.back_ref.b_off  | u64          | Смещение блока |
 //! | head.block_options   | BlockOptions | Опции блока    |
-use crate::bbuff::{streambuff::{ByteBuff, ByteReader, ByteWriter}, absbuff::ABuffError};
+use crate::bbuff::{streambuff::{ByteBuff, ByteReader, ByteWriter}, absbuff::{ABuffError, BytesCount}};
 use crate::bbuff::absbuff::{ ReadBytesFrom, WriteBytesTo };
 
 /// Блок лога
@@ -64,16 +64,49 @@ macro_rules! bytes_rw_new_type {
 
 bytes_rw_new_type!(
   #[derive(Copy, Clone, Debug, Default, PartialEq)]
-  struct BlockId(u32)
+  pub struct BlockId(u32)
 );
+
+impl BlockId {
+  pub fn new( value: u32 ) -> Self {
+    Self(value)
+  }
+
+  pub fn value( self ) -> u32 {
+    self.0
+  }
+}
+
 bytes_rw_new_type!(
   #[derive(Copy, Clone, Debug, Default, PartialEq, PartialOrd)]
-  struct FileOffset(u64)
+  pub struct FileOffset(u64)
 );
+
+impl FileOffset {
+  pub fn new( value: u64 ) -> Self {
+    Self(value)
+  }
+
+  pub fn value( self ) -> u64 {
+    self.0
+  }
+}
+
 bytes_rw_new_type!(
   #[derive(Copy, Clone, Debug, Default, PartialEq)]
-  struct DataId(u32)
+  pub struct DataId(u32)
 );
+
+impl DataId {
+  pub fn new( value: u32 ) -> Self {
+    Self(value)
+  }
+
+  pub fn value( self ) -> u32 {
+    self.0
+  }
+}
+
 
 /// Опции блока
 #[derive(Copy, Clone, Debug)]
@@ -232,7 +265,7 @@ fn test_block() {
 #[allow(dead_code)]
 const TAIL_MARKER : &str = "TAIL";
 
-/// Хвост
+/// Хвост блока
 pub struct Tail;
 
 impl Tail {
@@ -261,6 +294,28 @@ impl Tail {
 
     let next_pos = next_pos as u64;
     Block::read_from(next_pos, source)
+  }
+
+  pub fn try_read_head_at<Source>( position: u64, source: &Source ) -> Result<(BlockHead, BlockHeadSize, BlockDataSize, BlockTailSize), BlockErr> 
+  where Source : ReadBytesFrom
+  {
+    if position<8 { return Err(BlockErr(format!("position to small < 8"))) }
+
+    let mut tail_data :[u8;8] = [0; 8];
+    let reads = source.read_from((position as usize)-8, &mut tail_data)?;
+    if reads < tail_data.len() { return Err(BlockErr(format!("read to small < 8"))) }
+
+    let marker_matched = (0usize .. 4usize).fold( true, |res,idx| res && TAIL_MARKER.as_bytes()[idx] == tail_data[idx] );
+    if ! marker_matched { return Err(BlockErr(format!("tail marker not matched"))) }
+
+    let total_size: [u8; 4] = [ tail_data[4],tail_data[5],tail_data[6],tail_data[7] ];
+    let total_size = u32::from_le_bytes(total_size);
+
+    let next_pos = (position as i128) - (total_size as i128);
+    if next_pos < 0 { return Err(BlockErr(format!("tail marker pointer ref outside source"))) }
+
+    let next_pos = next_pos as u64;
+    BlockHead::read_form(next_pos as usize, source)
   }
 }
 
@@ -358,8 +413,11 @@ impl From<ABuffError> for BlockErr {
   }
 }
 
+/// Размер буфера при чтении файла
 #[allow(dead_code)]
 const READ_BUFF_SIZE: usize = 1024*8;
+
+/// Размер буфера при чтении заголовка, в теории заголовок не должен быть больше этого значения
 const PREVIEW_SIZE:usize = 1024 * 64;
 
 impl Block {
@@ -400,12 +458,12 @@ impl Block {
 
   /// Запись блока в массив байтов
   #[allow(dead_code)]
-  pub fn write_to<Destination>( &self, position:u64, dest:&mut Destination ) -> Result<(),BlockErr> 
+  pub fn write_to<Destination>( &self, position:u64, dest:&mut Destination ) -> Result<usize,BlockErr> 
   where Destination: WriteBytesTo
   {
     let bytes = self.to_bytes();
     dest.write_to( position as usize, &bytes[0 .. bytes.len()])?;
-    Ok(())
+    Ok(bytes.len())
   }
 }
 
@@ -413,11 +471,7 @@ impl Block {
 fn test_block_rw(){
   use super::super::bbuff::absbuff::ByteBuff;
 
-  let mut bb = ByteBuff {
-    data: Box::new(Vec::<u8>::new()),
-    resizeable: true,
-    max_size: None
-  };
+  let mut bb = ByteBuff::new_empty_unlimited();
 
   let block = Block {
     head: BlockHead { block_id: BlockId(0), data_type_id: DataId(1), back_refs: BackRefs::default(), block_options: BlockOptions::default() },
@@ -425,9 +479,22 @@ fn test_block_rw(){
   };
 
   block.write_to(0, &mut bb).unwrap();
-  println!("{block_size}", block_size=bb.data.len() );
+  println!("{block_size}", block_size=bb.bytes_count().unwrap() );
 
   let (rblock,_) = Block::read_from(0, &bb).unwrap();
   assert!( rblock.head.block_id == block.head.block_id );
   assert!( rblock.head.data_type_id == block.head.data_type_id );
+}
+
+/// Вычисление размера блока
+pub trait BlockSizeCompute {
+  /// Возвращает размер блока
+  fn block_size( self ) -> u64;
+}
+
+impl BlockSizeCompute for (BlockHead, BlockHeadSize, BlockDataSize, BlockTailSize) {
+  fn block_size( self ) -> u64 {
+    let (_, head_size, data_size, tail_size) = self;
+    (head_size.0 as u64) + (data_size.0 as u64) + (tail_size.0 as u64)
+  }
 }

@@ -1,5 +1,5 @@
 use std::{
-  sync::{Arc, RwLock, PoisonError, RwLockWriteGuard, RwLockReadGuard}, 
+  sync::{Arc, RwLock, PoisonError, RwLockWriteGuard, RwLockReadGuard, Mutex}, 
   fs::File,
   io::{
     SeekFrom,
@@ -11,10 +11,10 @@ use std::{
 #[derive(Debug,Clone)]
 pub struct ABuffError( pub String );
 
-impl From<PoisonError<RwLockWriteGuard<'_, std::fs::File>>> for ABuffError {
-  fn from(value: PoisonError<RwLockWriteGuard<'_, std::fs::File>>) -> Self {
+impl<A> From<PoisonError<RwLockWriteGuard<'_, A>>> for ABuffError {
+  fn from(value: PoisonError<RwLockWriteGuard<'_, A>>) -> Self {
     Self(
-      format!("can't write lock file field at {value}")
+      format!("can't write lock field at {value}")
     )
   }
 }
@@ -27,10 +27,10 @@ impl From<std::io::Error> for ABuffError {
   }
 }
 
-impl From<PoisonError<RwLockReadGuard<'_, std::fs::File>>> for ABuffError {
-  fn from(value: PoisonError<RwLockReadGuard<'_, std::fs::File>>) -> Self {
+impl<A> From<PoisonError<RwLockReadGuard<'_, A>>> for ABuffError {
+  fn from(value: PoisonError<RwLockReadGuard<'_, A>>) -> Self {
     Self(
-      format!("can't read lock file field at {value}")
+      format!("can't read lock field at {value}")
     )
   }
 }
@@ -69,20 +69,28 @@ pub trait ResizeBytes {
 /// Байтовый массив в памяти
 #[derive(Debug,Clone)]
 pub struct ByteBuff{ 
-  pub data: Box<Vec<u8>>, 
+  pub data: Arc<RwLock<Vec<u8>>>, 
   pub resizeable: bool,
   pub max_size: Option<usize>
 }
 
+impl ByteBuff {
+  pub fn new_empty_unlimited() -> Self {
+    Self { data: Arc::new( RwLock::new(Vec::<u8>::new()) ), resizeable: true, max_size: None }
+  }
+}
+
 impl ReadBytesFrom for ByteBuff {
   fn read_from( &self, pos:usize, data_consumer:&mut [u8] ) -> Result<usize, ABuffError> {
-    if pos > self.data.len() {
+    let data = self.data.read()?;
+
+    if pos > data.len() {
       Ok( 0 )
     } else {
-      let available = self.data.len() - pos;
+      let available = data.len() - pos;
       let read_size = data_consumer.len().min( available );
       for i in 0..read_size {
-        data_consumer[i] = self.data[i + pos]
+        data_consumer[i] = data[i + pos]
       }
       Ok(read_size)
     }
@@ -91,26 +99,28 @@ impl ReadBytesFrom for ByteBuff {
 
 impl WriteBytesTo for ByteBuff {
   fn write_to( &mut self, pos:usize, data_provider: &[u8] ) -> Result<(),ABuffError> {
+    let mut data = self.data.write()?;    
     let min_size = pos + data_provider.len();
-    if self.data.len() < min_size {
+    
+    if data.len() < min_size {
       if self.resizeable {
         match self.max_size {
           Some(max_size) => {
             if min_size > max_size {
               return Err(ABuffError(format!("can't write, limit by max size {max_size}, target size {min_size}")))
             } else {
-              self.data.resize(min_size, 0);
+              data.resize(min_size, 0);
             }
           },
           None => {
-            self.data.resize(min_size, 0);
+            data.resize(min_size, 0);
           }
         }
       }
     }
 
     for i in 0..data_provider.len() {
-      self.data[pos + i] = data_provider[i];
+      data[pos + i] = data_provider[i];
     }
 
     Ok(())
@@ -119,13 +129,15 @@ impl WriteBytesTo for ByteBuff {
 
 impl BytesCount for ByteBuff {
   fn bytes_count( &self ) -> Result<usize,ABuffError> {
-    Ok(self.data.len())
+    let data = self.data.read()?;
+    Ok(data.len())
   }
 }
 
 impl ResizeBytes for ByteBuff {
   fn resize_bytes( &mut self, new_size:usize ) -> Result<(),ABuffError> {
-    self.data.resize(new_size, 0);
+    let mut data = self.data.write()?;
+    data.resize(new_size, 0);
     Ok(())
   }
 }
