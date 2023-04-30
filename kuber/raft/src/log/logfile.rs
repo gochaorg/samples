@@ -1,7 +1,6 @@
-use std::sync::{Arc, RwLock};
-
 use super::block::*;
 use super::super::bbuff::absbuff::*;
+use std::fmt;
 
 #[cfg_attr(doc, aquamarine::aquamarine)]
 #[derive(Clone)]
@@ -104,6 +103,20 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
   last_block_size: Option<u64>,
 }
 
+impl<A> fmt::Display for LogFile<A> 
+where A: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
+{
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, 
+      "last_block_id: {last_block_id:?} last_block_begin: {last_block_begin:?} last_block_size: {last_block_size:?}",
+      last_block_id = self.last_block_id,
+      last_block_begin = self.last_block_begin,
+      last_block_size = self.last_block_size
+    )
+  }
+}
+
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub enum LogErr {
   Generic(String),
@@ -123,6 +136,7 @@ impl From<BlockErr> for LogErr {
   }
 }
 
+#[allow(dead_code)]
 impl<FlatBuff> LogFile<FlatBuff> 
 where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 {
@@ -167,7 +181,7 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
       None => {
         self.append_first_block(block)
       },
-      Some(last_block_id) => {
+      Some(_last_block_id) => {
         match self.last_block_begin {
           None => { return Err(LogErr::Generic(format!("internal state error, at {}:{}", file!(), line!() ))) },
           Some( last_block_offset ) => {
@@ -208,6 +222,7 @@ fn test_empty_create() {
 fn test_raw_append_block() {
   let bb = ByteBuff::new_empty_unlimited();
 
+  println!("create log from empty buff");
   let mut log = LogFile::new(bb.clone()).unwrap();
 
   let b0 = Block {
@@ -222,7 +237,7 @@ fn test_raw_append_block() {
 
   let b2 = Block {
     head: BlockHead { block_id: BlockId::new(2), data_type_id: DataId::new(0), back_refs: BackRefs::default(), block_options: BlockOptions::default() },
-    data: Box::new(vec![10u8, 11, 12])
+    data: Box::new(vec![20u8, 21, 22])
   };
 
   log.append_block(&b0).unwrap();
@@ -230,4 +245,9 @@ fn test_raw_append_block() {
   log.append_block(&b2).unwrap();
 
   println!("data len {}", bb.bytes_count().unwrap());
+  println!("log {}", log);
+
+  println!("create log from buff with data");
+  let log = LogFile::new(bb.clone()).unwrap();
+  println!("log {}", log);  
 }
