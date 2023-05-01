@@ -24,6 +24,8 @@
 //! | head.back_ref.b_id   | u32          | Идентификатор блока |
 //! | head.back_ref.b_off  | u64          | Смещение блока |
 //! | head.block_options   | BlockOptions | Опции блока    |
+use std::fmt;
+
 use crate::bbuff::{streambuff::{ByteBuff, ByteReader, ByteWriter}, absbuff::{ABuffError}};
 use crate::bbuff::absbuff::{ ReadBytesFrom, WriteBytesTo };
 
@@ -79,7 +81,42 @@ impl BlockId {
 }
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, PartialOrd)]
-pub struct FileOffset(usize);
+pub struct FileOffset(u64);
+
+#[allow(dead_code)]
+impl FileOffset {
+  pub fn new( value: u64 ) -> Self {
+    Self(value)
+  }
+
+  pub fn value( self ) -> u64 {
+    self.0
+  }
+}
+
+impl From<u64> for FileOffset {
+  fn from(value: u64) -> Self {
+    Self::new(value)
+  }
+}
+
+impl From<u32> for FileOffset {
+  fn from(value: u32) -> Self {
+    Self::new(value as u64)
+  }
+}
+
+impl From<u16> for FileOffset {
+  fn from(value: u16) -> Self {
+    Self::new(value as u64)
+  }
+}
+
+impl From<usize> for FileOffset {
+  fn from(value: usize) -> Self {
+    Self::new(value as u64)
+  }
+}
 
 impl ByteReader<FileOffset> for ByteBuff {
   fn read( &mut self, target:&mut FileOffset ) -> Result<(),String> {
@@ -93,45 +130,7 @@ impl ByteReader<FileOffset> for ByteBuff {
 
 impl ByteWriter<FileOffset> for ByteBuff {
   fn write( &mut self, v:FileOffset ) {
-    if v.0 > (u64::MAX as usize) {
-      panic!("")
-    }
     self.write(v.0 as u64)
-  }
-}
-
-#[allow(dead_code)]
-impl FileOffset {
-  pub fn new( value: usize ) -> Self {
-    Self(value)
-  }
-
-  pub fn value( self ) -> usize {
-    self.0
-  }
-}
-
-impl From<u64> for FileOffset {
-  fn from(value: u64) -> Self {
-    Self::new(value as usize)
-  }
-}
-
-impl From<u32> for FileOffset {
-  fn from(value: u32) -> Self {
-    Self::new(value as usize)
-  }
-}
-
-impl From<u16> for FileOffset {
-  fn from(value: u16) -> Self {
-    Self::new(value as usize)
-  }
-}
-
-impl From<usize> for FileOffset {
-  fn from(value: usize) -> Self {
-    Self::new(value)
   }
 }
 
@@ -354,8 +353,8 @@ impl Tail {
     }
 
     let mut tail_data :[u8;TAIL_SIZE as usize] = [0; (TAIL_SIZE as usize)];
-    let reads = source.read_from((position as usize)-(TAIL_SIZE as usize), &mut tail_data)?;
-    if reads < tail_data.len() { return Err(BlockErr::no_data(reads, TAIL_SIZE as usize)) }
+    let reads = source.read_from((position)-(TAIL_SIZE as u64), &mut tail_data)?;
+    if reads < tail_data.len() as u64 { return Err(BlockErr::no_data(reads as u64, TAIL_SIZE as u64)) }
 
     let marker_matched = (0usize .. 4usize).fold( true, |res,idx| res && TAIL_MARKER.as_bytes()[idx] == tail_data[idx] );
     if ! marker_matched { return Err(BlockErr::TailMarkerMismatched {tail_data: tail_data}) }
@@ -381,8 +380,8 @@ impl Tail {
     }
 
     let mut tail_data :[u8;TAIL_SIZE as usize] = [0; (TAIL_SIZE as usize)];
-    let reads = source.read_from((position as usize)-(TAIL_SIZE as usize), &mut tail_data)?;
-    if reads < tail_data.len() { return Err(BlockErr::no_data(reads, TAIL_SIZE as usize)) }
+    let reads = source.read_from((position)-(TAIL_SIZE as u64), &mut tail_data)?;
+    if reads < tail_data.len() as u64 { return Err(BlockErr::no_data(reads, TAIL_SIZE as u64)) }
 
     let marker_matched = (0usize .. 4usize).fold( true, |res,idx| res && TAIL_MARKER.as_bytes()[idx] == tail_data[idx] );
     if ! marker_matched { return Err(BlockErr::TailMarkerMismatched {tail_data: tail_data}) }
@@ -453,18 +452,22 @@ impl BlockHead {
   }
 
   /// Чтение заголовка из указанной позиции
-  pub fn read_form<S>( position:usize, source:&S ) -> Result<BlockHeadRead, BlockErr> 
-  where S: ReadBytesFrom
+  pub fn read_form<S,P>( position:P, source:&S ) -> Result<BlockHeadRead, BlockErr> 
+  where S: ReadBytesFrom, P: Into<FileOffset>
   {
     let mut buff: [u8; PREVIEW_SIZE] = [0; PREVIEW_SIZE];
+    let position : FileOffset = position.into();
+    let position : u64 = position.value();
     let reads = source.read_from(position, &mut buff)?;
-    if reads < (HEAD_MIN_SIZE as usize) {
-      return Err(BlockErr::no_data(reads,HEAD_MIN_SIZE as usize))
+    if reads < (HEAD_MIN_SIZE as u64) {
+      return Err(BlockErr::no_data(reads,HEAD_MIN_SIZE as u64))
     }
 
+    LIMIT_USIZE.check(reads, "read_form")?;
+
     let mut buff1 = Vec::<u8>::new();
-    buff1.resize(reads, 0);
-    for i in 0..reads { buff1[i] = buff[i] }
+    buff1.resize(reads as usize, 0);
+    for i in 0..(reads as usize) { buff1[i] = buff[i] }
     
     let res = Self::from_bytes(Box::new(buff1))?;
     let (bh, head_size, data_size, tail_size) = res;
@@ -486,16 +489,41 @@ pub enum BlockErr {
     actual: FileOffset,
   },
   NoData {
-    reads: usize,
-    expect: usize,
+    reads: u64,
+    expect: u64,
   },
   TailMarkerMismatched {
     tail_data: [u8; TAIL_SIZE as usize]
   },
   TailPointerOuside {
     pointer: i128
+  },
+  Limit {
+    message: String,
+    limit: u64,
+    target: u64
   }
 }
+
+#[derive(Debug,Clone, Copy)]
+struct Limit(u64);
+impl Limit {
+  fn check<V:Into<u64>>(self, value:V, operation:&str) -> Result<(), BlockErr> 
+  {
+    let v64:u64 = value.into();
+    if v64 > self.0 {
+      Err(BlockErr::limit(operation, self.clone(), v64))
+    }else{
+      Ok(())
+    }
+  }
+}
+impl fmt::Display for Limit {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+const LIMIT_USIZE : Limit = Limit(usize::MAX as u64);
 
 impl BlockErr {
   fn generic<A: Into<String>>( message:A ) -> Self {
@@ -510,8 +538,17 @@ impl BlockErr {
       actual: actual_pos.into() 
     }
   }
-  fn no_data( reads: usize, expect: usize ) -> Self {
+  fn no_data( reads: u64, expect: u64 ) -> Self {
     Self::NoData { reads: reads, expect: expect }
+  }
+  fn limit( operation_name: &str, limit:Limit, target:u64 ) -> Self {
+    Self::Limit { 
+      message: format!(
+        "can't execute {operation_name} by limit size, current limit {limit}, target size {target}"
+      ), 
+      limit: limit.0, 
+      target: target 
+    }
   }
 }
 
@@ -554,25 +591,26 @@ impl Block {
   {
     let mut head_preview: [u8;PREVIEW_SIZE] = [0; PREVIEW_SIZE];
 
-    let reads = file.read_from(position as usize, &mut head_preview)?;
-    if reads < (HEAD_MIN_SIZE as usize) { return Err(BlockErr::from("readed to small header")) }
+    let reads = file.read_from(position, &mut head_preview)?;
+    if reads < (HEAD_MIN_SIZE as u64) { return Err(BlockErr::from("readed to small header")) }
 
     let (bh, head_size, data_size, tail_size) = BlockHead::from_bytes(Box::new(head_preview.to_vec()))?;
     let mut buff: [u8;READ_BUFF_SIZE] = [0;READ_BUFF_SIZE];
-    let mut left_bytes = data_size.0;
+    let mut left_bytes = data_size.0 as u64;
+    LIMIT_USIZE.check(left_bytes, "read_from")?;
 
     let mut block_data = Vec::<u8>::new();
     block_data.resize(left_bytes as usize, 0);
 
     let mut block_data_ptr = 0usize;
-    let mut file_pos = (position as usize) + (head_size.0 as usize);
+    let mut file_pos = (position) + (head_size.0 as u64);
 
     while left_bytes>0 {
       let readed = file.read_from( file_pos,&mut buff)?;
-      if readed==0usize { return Err(BlockErr::from("data block truncated")) }
+      if readed==0 { return Err(BlockErr::from("data block truncated")) }
 
-      for i in 0..(readed.min(left_bytes as usize)) {
-        block_data[block_data_ptr] = buff[i];
+      for i in 0..(readed.min(left_bytes as u64)) {
+        block_data[block_data_ptr] = buff[i as usize];
         block_data_ptr += 1;
         file_pos += 1;
         left_bytes -= 1;
@@ -584,11 +622,11 @@ impl Block {
 
   /// Запись блока в массив байтов
   #[allow(dead_code)]
-  pub fn write_to<Destination>( &self, position:usize, dest:&mut Destination ) -> Result<usize,BlockErr> 
+  pub fn write_to<Destination>( &self, position:u64, dest:&mut Destination ) -> Result<usize,BlockErr> 
   where Destination: WriteBytesTo
   {
     let bytes = self.to_bytes();
-    dest.write_to( position as usize, &bytes[0 .. bytes.len()])?;
+    dest.write_to( position, &bytes[0 .. bytes.len()])?;
     Ok(bytes.len())
   }
 }

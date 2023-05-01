@@ -156,12 +156,6 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
       )
     }
 
-    if buff_size > (u64::MAX as usize) {
-      return Err(
-        LogErr::Generic(format!("buff to big"))
-      );
-    }
-
     let block_head_read 
       = Tail::try_read_head_at( buff_size as u64, &buff )?;
 
@@ -195,7 +189,7 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
             match self.last_block_size {
               None => { return Err(LogErr::Generic(format!("internal state error, at {}:{}", file!(), line!() ))) },
               Some( last_block_size ) => {
-                self.append_next_block(last_block_offset.value() + (last_block_size as usize), block)
+                self.append_next_block(last_block_offset.value() + (last_block_size as u64), block)
               }
             }
           }
@@ -210,7 +204,7 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
   }
 
   /// Добавление второго и последующих блоков
-  fn append_next_block( &mut self, position:usize, block:&Block ) -> Result<(), LogErr> {
+  fn append_next_block( &mut self, position:u64, block:&Block ) -> Result<(), LogErr> {
     let block_size = block.write_to(position, &mut self.buff)?;
     self.last_block_id = Some(block.head.block_id);
     self.last_block_begin = Some(FileOffset::from(position));
@@ -258,7 +252,7 @@ fn test_raw_append_block() {
 
   println!("create log from buff with data");
   let log = LogFile::new(bb.clone()).unwrap();
-  println!("log {}", log);  
+  println!("log {}", log);
 }
 
 #[allow(dead_code)]
