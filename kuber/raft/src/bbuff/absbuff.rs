@@ -9,11 +9,51 @@ use std::{
 
 /// Ошибка чтения/записи
 #[derive(Debug,Clone)]
-pub struct ABuffError( pub String );
+pub enum ABuffError{
+  Generic(String),
+  IO {
+    message: String,
+    os_error: Option<i32>
+  },
+  Limit {
+    message: String,
+    limit: usize,
+    target: usize,
+  },
+  PartialWrited {
+    message: String,
+    actual: usize,
+    expect: usize,
+  }
+}
+
+impl ABuffError {
+  pub fn generic<A: Into<String>>( message:A ) -> ABuffError {
+    ABuffError::Generic(
+      message.into()
+    )
+  }
+  pub fn limit( operation_name: &str, limit:usize, target:usize ) -> ABuffError {
+    ABuffError::Limit { 
+      message: format!(
+        "can't execute {operation_name} by limit size, current limit {limit}, target size {target}"
+      ), 
+      limit: limit, 
+      target: target 
+    }
+  }
+  pub fn partial_writed( expect:usize, actual:usize ) -> ABuffError {
+    ABuffError::PartialWrited { 
+      message: format!("partial writed bytes, expect {expect}, actual {actual}"), 
+      actual: actual, 
+      expect: expect
+    }
+  }
+}
 
 impl<A> From<PoisonError<RwLockWriteGuard<'_, A>>> for ABuffError {
   fn from(value: PoisonError<RwLockWriteGuard<'_, A>>) -> Self {
-    Self(
+    Self::generic(
       format!("can't write lock field at {value}")
     )
   }
@@ -21,15 +61,16 @@ impl<A> From<PoisonError<RwLockWriteGuard<'_, A>>> for ABuffError {
 
 impl From<std::io::Error> for ABuffError {
   fn from(value: std::io::Error) -> Self {
-    Self(
-      format!("io error: {value}")
-    )
+    Self::IO {
+      message: value.to_string(),
+      os_error: value.raw_os_error()
+    }
   }
 }
 
 impl<A> From<PoisonError<RwLockReadGuard<'_, A>>> for ABuffError {
   fn from(value: PoisonError<RwLockReadGuard<'_, A>>) -> Self {
-    Self(
+    Self::generic(
       format!("can't read lock field at {value}")
     )
   }
@@ -108,7 +149,9 @@ impl WriteBytesTo for ByteBuff {
         match self.max_size {
           Some(max_size) => {
             if min_size > max_size {
-              return Err(ABuffError(format!("can't write, limit by max size {max_size}, target size {min_size}")))
+              return Err(
+                ABuffError::limit("write_to", max_size, min_size)
+              )
             } else {
               data.resize(min_size, 0);
             }
@@ -156,7 +199,13 @@ impl WriteBytesTo for FileBuff {
 
     let min_size = pos + data_provider.len();
     if min_size > (u64::MAX as usize) {
-      return Err(ABuffError("can't write to file pos more than u64::MAX".to_string()))
+      return Err(
+        ABuffError::Limit { 
+          message: format!("can't write to file pos more than u64::MAX"), 
+          limit: u64::MAX as usize, 
+          target: min_size
+        }
+      )
     }
 
     if (file_len as usize) < min_size {
@@ -168,7 +217,9 @@ impl WriteBytesTo for FileBuff {
     let writed = file.write(data_provider)?;
     if writed < data_provider.len() {
       let expect = data_provider.len();
-      return Err(ABuffError(format!("partial writed, writed {writed} bytes, expect {expect}")));
+      return Err(
+        ABuffError::partial_writed(expect, writed)
+      );
     }
 
     file.flush()?;
@@ -180,6 +231,7 @@ impl WriteBytesTo for FileBuff {
 impl ReadBytesFrom for FileBuff {
   fn read_from( &self, pos:usize, data_consumer:&mut [u8] ) -> Result<usize,ABuffError> {
     let mut file = self.file.write()?;
+
     let file_len = file.metadata()?.len();
     if pos > (file_len as usize) { return Ok(0); }
 
@@ -200,7 +252,11 @@ impl BytesCount for FileBuff {
 
 impl ResizeBytes for FileBuff {
   fn resize_bytes( &mut self, new_size:usize ) -> Result<(),ABuffError> {
-    if new_size > (u64::MAX as usize) { return Err(ABuffError(format!("can't resize file more than u64"))); }
+    if new_size > (u64::MAX as usize) { return 
+      Err(
+        ABuffError::limit("resize_bytes", u64::MAX as usize, new_size)
+      ); 
+    }
 
     let file = self.file.write()?;
     file.set_len(new_size as u64)?;

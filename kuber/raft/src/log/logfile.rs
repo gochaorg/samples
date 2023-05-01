@@ -162,18 +162,18 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
       );
     }
 
-    let block_head_raw 
+    let block_head_read 
       = Tail::try_read_head_at( buff_size as u64, &buff )?;
 
-    let block_size = block_head_raw.clone().block_size();
+    let block_size = block_head_read.block_size();
 
-    let (head, _, _, _) = block_head_raw;
+    let head = block_head_read.head;
 
     Ok(
       LogFile {
         buff: buff,
         last_block_id: Some(head.block_id),
-        last_block_begin: Some(FileOffset::new( (buff_size as u64) - block_size) ),
+        last_block_begin: Some(FileOffset::from( (buff_size as u64) - block_size) ),
         last_block_size: Some(block_size),
       }
     )
@@ -195,7 +195,7 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
             match self.last_block_size {
               None => { return Err(LogErr::Generic(format!("internal state error, at {}:{}", file!(), line!() ))) },
               Some( last_block_size ) => {
-                self.append_next_block(last_block_offset.value() + last_block_size, block)
+                self.append_next_block(last_block_offset.value() + (last_block_size as usize), block)
               }
             }
           }
@@ -206,14 +206,14 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 
   /// Добавление первого блока
   fn append_first_block( &mut self, block:&Block ) -> Result<(), LogErr> {
-    self.append_next_block(0u64, block)
+    self.append_next_block(0, block)
   }
 
   /// Добавление второго и последующих блоков
-  fn append_next_block( &mut self, position:u64, block:&Block ) -> Result<(), LogErr> {
+  fn append_next_block( &mut self, position:usize, block:&Block ) -> Result<(), LogErr> {
     let block_size = block.write_to(position, &mut self.buff)?;
     self.last_block_id = Some(block.head.block_id);
-    self.last_block_begin = Some(FileOffset::new(position));
+    self.last_block_begin = Some(FileOffset::from(position));
     self.last_block_size = Some(block_size as u64);
 
     Ok(())
@@ -265,7 +265,7 @@ fn test_raw_append_block() {
 impl<FlatBuff> LogFile<FlatBuff> 
 where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 {
-  fn read_block_head_at( &self, position:u64 ) -> Result<(BlockHead, BlockHeadSize, BlockDataSize, BlockTailSize),LogErr> {    
+  fn read_block_head_at( &self, position:u64 ) -> Result<BlockHeadRead,LogErr> {    
     let res = BlockHead::read_form(position as usize, &self.buff)?;
     Ok(res)
   }
