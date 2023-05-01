@@ -136,11 +136,14 @@ impl From<BlockErr> for LogErr {
   }
 }
 
+/// Реализация 
+/// - создания лог файла
+/// - Добавление блока в лог файл
 #[allow(dead_code)]
 impl<FlatBuff> LogFile<FlatBuff> 
 where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 {
-  fn new( buff:FlatBuff ) -> Result<Self, LogErr> {
+  pub fn new( buff:FlatBuff ) -> Result<Self, LogErr> {
     let buff_size = buff.bytes_count()?;
     if buff_size == 0 {
       return Ok(
@@ -176,6 +179,10 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
     )
   }
 
+  /// Добавление блока в лог файл
+  /// 
+  /// # Аргументы
+  /// - `block` - добавляемый блок
   fn append_block( &mut self, block: &Block ) -> Result<(), LogErr> {
     match self.last_block_id {
       None => {
@@ -197,10 +204,12 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
     }
   }
 
+  /// Добавление первого блока
   fn append_first_block( &mut self, block:&Block ) -> Result<(), LogErr> {
     self.append_next_block(0u64, block)
   }
 
+  /// Добавление второго и последующих блоков
   fn append_next_block( &mut self, position:u64, block:&Block ) -> Result<(), LogErr> {
     let block_size = block.write_to(position, &mut self.buff)?;
     self.last_block_id = Some(block.head.block_id);
@@ -250,4 +259,18 @@ fn test_raw_append_block() {
   println!("create log from buff with data");
   let log = LogFile::new(bb.clone()).unwrap();
   println!("log {}", log);  
+}
+
+#[allow(dead_code)]
+impl<FlatBuff> LogFile<FlatBuff> 
+where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
+{
+  fn read_block_head_at( &self, position:u64 ) -> Result<(BlockHead, BlockHeadSize, BlockDataSize, BlockTailSize),LogErr> {    
+    todo!()
+  }
+
+  fn read_block_at( &self, position:u64 ) -> Result<(Block,u64), LogErr> {
+    let res = Block::read_from(position, &self.buff)?;
+    Ok(res)
+  }
 }
