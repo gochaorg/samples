@@ -266,7 +266,8 @@ impl<FlatBuff> LogFile<FlatBuff>
 where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 {
   fn read_block_head_at( &self, position:u64 ) -> Result<(BlockHead, BlockHeadSize, BlockDataSize, BlockTailSize),LogErr> {    
-    todo!()
+    let res = BlockHead::read_form(position as usize, &self.buff)?;
+    Ok(res)
   }
 
   fn read_block_at( &self, position:u64 ) -> Result<(Block,u64), LogErr> {
