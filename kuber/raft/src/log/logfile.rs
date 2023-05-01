@@ -254,7 +254,7 @@ fn test_raw_append_block() {
 impl<FlatBuff> LogFile<FlatBuff> 
 where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 {
-  fn read_block_head_at( &self, position:u64 ) -> Result<BlockHeadRead,LogErr> {    
+  fn read_head_at( &self, position:u64 ) -> Result<BlockHeadRead,LogErr> {    
     let res = BlockHead::read_form(position as usize, &self.buff)?;
     Ok(res)
   }
@@ -263,5 +263,73 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
     let res = Block::read_from(position, &self.buff)?;
     Ok(res)
   }
+
+  fn read_previous_head( &self, current_block: &BlockHeadRead ) -> Result<Option<BlockHeadRead>, LogErr> {
+    let res = Tail::try_read_head_at(current_block.position.value(), &self.buff);
+    match res {
+      Ok(res) => Ok(Some(res)),
+      Err(err) => match err {
+        BlockErr::PositionToSmall { min_position: _, actual: _ } => Ok(None),
+        BlockErr::TailPointerOuside { pointer: _ } => Ok(None),
+        _ => Err(LogErr::from(err))
+      }
+    }
+  }
+
+  fn read_next_head( &self, current_block: &BlockHeadRead ) -> Result<Option<BlockHeadRead>, LogErr> {
+    let next_ptr = current_block.block_size() + current_block.position.value();
+    let buff_size = self.buff.bytes_count()?;
+    if next_ptr >= buff_size { return Ok(None) }
+
+    self.read_head_at(next_ptr).map(|r| Some(r))
+  }
 }
 
+#[test]
+fn test_navigation() {
+  let bb = ByteBuff::new_empty_unlimited();
+
+  println!("create log from empty buff");
+  let mut log = LogFile::new(bb.clone()).unwrap();
+
+  let b0 = Block {
+    head: BlockHead { block_id: BlockId::new(0), data_type_id: DataId::new(0), back_refs: BackRefs::default(), block_options: BlockOptions::default() },
+    data: Box::new(vec![0u8, 1, 2])
+  };
+
+  let b1 = Block {
+    head: BlockHead { block_id: BlockId::new(1), data_type_id: DataId::new(0), back_refs: BackRefs::default(), block_options: BlockOptions::default() },
+    data: Box::new(vec![10u8, 11, 12])
+  };
+
+  let b2 = Block {
+    head: BlockHead { block_id: BlockId::new(2), data_type_id: DataId::new(0), back_refs: BackRefs::default(), block_options: BlockOptions::default() },
+    data: Box::new(vec![20u8, 21, 22])
+  };
+
+  log.append_block(&b0).unwrap();
+  log.append_block(&b1).unwrap();
+  log.append_block(&b2).unwrap();
+
+  let r0 = log.read_head_at(0).unwrap();
+  assert!(r0.head.block_id == b0.head.block_id);
+
+  let r1 = log.read_next_head(&r0).unwrap();
+  let r1 = r1.unwrap();
+  assert!(b1.head.block_id == r1.head.block_id);
+
+  let r2 = log.read_next_head(&r1).unwrap();
+  let r2 = r2.unwrap();
+  assert!(b2.head.block_id == r2.head.block_id);
+
+  let r3 = log.read_next_head(&r2).unwrap();
+  assert!(r3.is_none());
+
+  let rr1 = log.read_previous_head(&r2).unwrap();
+  let rr1 = rr1.unwrap();
+  assert!( rr1.head.block_id == r1.head.block_id );
+
+  let rm0 = log.read_previous_head(&r0).unwrap();
+  assert!(rm0.is_none());
+
+}
