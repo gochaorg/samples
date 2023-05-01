@@ -98,21 +98,33 @@ pub struct LogFile<FlatBuff>
 where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 {
   buff: FlatBuff,
-  last_block_id: Option<BlockId>,
-  last_block_begin: Option<FileOffset>,
-  last_block_size: Option<u64>,
+  last_block: Option<BlockHeadRead>,
 }
 
 impl<A> fmt::Display for LogFile<A> 
 where A: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, 
-      "last_block_id: {last_block_id:?} last_block_begin: {last_block_begin:?} last_block_size: {last_block_size:?}",
-      last_block_id = self.last_block_id,
-      last_block_begin = self.last_block_begin,
-      last_block_size = self.last_block_size
-    )
+    let log_size = self.buff.bytes_count();
+    let mut msg = "".to_string();
+
+    msg.push_str(
+      &(match log_size {
+        Ok(log_size) => { format!("log file size {log_size} bytes") },
+        Err(err) => { format!("log file size err:{:?}", err) }
+      })
+    );
+
+    match &self.last_block {
+      None => {
+        msg.push_str(" last block is none");
+      },
+      Some(last_block) => {
+        msg.push_str(&format!(" last block id={b_id} pos={pos}", pos=last_block.position, b_id=last_block.head.block_id));
+      }
+    }
+
+    write!(f, "{}", msg )
   }
 }
 
@@ -139,19 +151,17 @@ impl From<BlockErr> for LogErr {
 /// Реализация 
 /// - создания лог файла
 /// - Добавление блока в лог файл
-#[allow(dead_code)]
 impl<FlatBuff> LogFile<FlatBuff> 
 where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 {
+  #[allow(dead_code)]
   pub fn new( buff:FlatBuff ) -> Result<Self, LogErr> {
     let buff_size = buff.bytes_count()?;
     if buff_size == 0 {
       return Ok(
         LogFile {
           buff: buff,
-          last_block_id: None,
-          last_block_begin: None,
-          last_block_size: None,
+          last_block: None,
         }
       )
     }
@@ -159,16 +169,10 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
     let block_head_read 
       = Tail::try_read_head_at( buff_size as u64, &buff )?;
 
-    let block_size = block_head_read.block_size();
-
-    let head = block_head_read.head;
-
     Ok(
       LogFile {
         buff: buff,
-        last_block_id: Some(head.block_id),
-        last_block_begin: Some(FileOffset::from( (buff_size as u64) - block_size) ),
-        last_block_size: Some(block_size),
+        last_block: Some(block_head_read.clone()),
       }
     )
   }
@@ -177,23 +181,17 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
   /// 
   /// # Аргументы
   /// - `block` - добавляемый блок
+  #[allow(dead_code)]
   fn append_block( &mut self, block: &Block ) -> Result<(), LogErr> {
-    match self.last_block_id {
+    match &self.last_block {
       None => {
         self.append_first_block(block)
       },
-      Some(_last_block_id) => {
-        match self.last_block_begin {
-          None => { return Err(LogErr::Generic(format!("internal state error, at {}:{}", file!(), line!() ))) },
-          Some( last_block_offset ) => {
-            match self.last_block_size {
-              None => { return Err(LogErr::Generic(format!("internal state error, at {}:{}", file!(), line!() ))) },
-              Some( last_block_size ) => {
-                self.append_next_block(last_block_offset.value() + (last_block_size as u64), block)
-              }
-            }
-          }
-        }
+      Some(last_block) => {
+        self.append_next_block(
+          last_block.position.value() + last_block.block_size(), 
+          block
+        )
       }
     }
   }
@@ -205,11 +203,8 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 
   /// Добавление второго и последующих блоков
   fn append_next_block( &mut self, position:u64, block:&Block ) -> Result<(), LogErr> {
-    let block_size = block.write_to(position, &mut self.buff)?;
-    self.last_block_id = Some(block.head.block_id);
-    self.last_block_begin = Some(FileOffset::from(position));
-    self.last_block_size = Some(block_size as u64);
-
+    let writed_block = block.write_to(position, &mut self.buff)?;
+    self.last_block = Some( writed_block );
     Ok(())
   }
 }
@@ -269,3 +264,4 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
     Ok(res)
   }
 }
+

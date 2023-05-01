@@ -69,6 +69,12 @@ bytes_rw_new_type!(
   pub struct BlockId(u32)
 );
 
+impl fmt::Display for BlockId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f,"BlockId({})",self.0)
+  }
+}
+
 #[allow(dead_code)]
 impl BlockId {
   pub fn new( value: u32 ) -> Self {
@@ -82,6 +88,12 @@ impl BlockId {
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, PartialOrd)]
 pub struct FileOffset(u64);
+
+impl fmt::Display for FileOffset {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f,"FileOffset({})",self.0)
+  }
+}
 
 #[allow(dead_code)]
 impl FileOffset {
@@ -241,6 +253,8 @@ pub struct BlockHeadRead {
 }
 
 impl BlockHeadRead {
+  /// Возвращает размер всего блока
+  #[allow(dead_code)]
   pub fn block_size( &self ) -> u64 {
     (self.head_size.0 as u64) + (self.data_size.0 as u64) + (self.tail_size.0 as u64)
   }
@@ -400,7 +414,7 @@ impl Tail {
 impl Block {
   /// Формирование массива байтов представлющих блок
   #[allow(dead_code)]
-  pub fn to_bytes( &self ) -> Box<Vec<u8>> {
+  pub fn to_bytes( &self ) -> (Box<Vec<u8>>, BlockHeadSize, BlockDataSize, BlockTailSize) {
     // write tail marker
     let mut tail = Box::new(Vec::<u8>::new());
     for i in 0..TAIL_MARKER.len() {
@@ -410,6 +424,9 @@ impl Block {
 
     // write head
     let mut bytes = write_block_head(self.head.clone(), self.data.len() as u32, tail.len() as u16);
+    let block_head_size = BlockHeadSize(bytes.len() as u32);
+    let block_data_size = BlockDataSize(self.data.len() as u32);
+    let block_tail_size = BlockTailSize(tail.len() as u16);
 
     let off = bytes.len();
     if self.data.len()>0 {      
@@ -434,7 +451,7 @@ impl Block {
       bytes[ blen - tail.len() + i ] = tail[i];
     }
 
-    bytes
+    (bytes, block_head_size, block_data_size, block_tail_size)
   }
 }
 
@@ -622,12 +639,20 @@ impl Block {
 
   /// Запись блока в массив байтов
   #[allow(dead_code)]
-  pub fn write_to<Destination>( &self, position:u64, dest:&mut Destination ) -> Result<usize,BlockErr> 
+  pub fn write_to<Destination>( &self, position:u64, dest:&mut Destination ) -> Result<BlockHeadRead,BlockErr> 
   where Destination: WriteBytesTo
   {
-    let bytes = self.to_bytes();
+    let (bytes,head_size,data_size,tail_size) = self.to_bytes();
     dest.write_to( position, &bytes[0 .. bytes.len()])?;
-    Ok(bytes.len())
+    Ok(
+      BlockHeadRead { 
+        position: FileOffset::from(position), 
+        head: self.head.clone(), 
+        head_size: head_size, 
+        data_size: data_size, 
+        tail_size: tail_size, 
+      }
+    )
   }
 }
 
