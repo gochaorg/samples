@@ -1,6 +1,8 @@
 use super::block::*;
 use super::super::bbuff::absbuff::*;
+use std::borrow::BorrowMut;
 use std::fmt;
+use std::sync::{Arc, Mutex, RwLock, PoisonError, RwLockReadGuard};
 
 #[cfg_attr(doc, aquamarine::aquamarine)]
 #[derive(Clone)]
@@ -133,7 +135,8 @@ where A: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 pub enum LogErr {
   Generic(String),
   FlatBuff(ABuffError),
-  Block(BlockErr)
+  Block(BlockErr),
+  LogIsEmpty
 }
 
 impl From<ABuffError> for LogErr {
@@ -145,6 +148,12 @@ impl From<ABuffError> for LogErr {
 impl From<BlockErr> for LogErr {
   fn from(value: BlockErr) -> Self {
     LogErr::Block(value.clone())
+  }
+}
+
+impl<A> From<PoisonError<RwLockReadGuard<'_, A>>> for LogErr {
+  fn from(value: PoisonError<RwLockReadGuard<'_, A>>) -> Self {
+    LogErr::Generic(format!("can't lock at {}", value.to_string()))
   }
 }
 
@@ -254,16 +263,25 @@ fn test_raw_append_block() {
 impl<FlatBuff> LogFile<FlatBuff> 
 where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 {
+  /// Чтение заголовка в указанной позиции
   fn read_head_at( &self, position:u64 ) -> Result<BlockHeadRead,LogErr> {    
     let res = BlockHead::read_form(position as usize, &self.buff)?;
     Ok(res)
   }
 
+  /// Чтение блока в указанной позиции
+  /// 
+  /// # Аргументы
+  /// - `position` - позиция
+  /// 
+  /// # Результат
+  /// ( Блок, позиция следующего блока )
   fn read_block_at( &self, position:u64 ) -> Result<(Block,u64), LogErr> {
     let res = Block::read_from(position, &self.buff)?;
     Ok(res)
   }
 
+  /// Получение предшедствующего заголовка перед указанным
   fn read_previous_head( &self, current_block: &BlockHeadRead ) -> Result<Option<BlockHeadRead>, LogErr> {
     let res = Tail::try_read_head_at(current_block.position.value(), &self.buff);
     match res {
@@ -276,6 +294,7 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
     }
   }
 
+  /// Получение заголовка следующего блока за указанным
   fn read_next_head( &self, current_block: &BlockHeadRead ) -> Result<Option<BlockHeadRead>, LogErr> {
     let next_ptr = current_block.block_size() + current_block.position.value();
     let buff_size = self.buff.bytes_count()?;
@@ -332,4 +351,139 @@ fn test_navigation() {
   let rm0 = log.read_previous_head(&r0).unwrap();
   assert!(rm0.is_none());
 
+}
+
+impl<FlatBuff> LogFile<FlatBuff> 
+where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
+{
+  fn build_next_block(  &mut self, data_id: DataId, data: &[u8] ) -> Block {
+    // build BlockData
+    let mut block_data = Vec::<u8>::new();
+    block_data.resize( data.len(), 0 );
+    for i in 0..data.len() { block_data[i] = data[i] }
+    let block_data = Box::new(block_data);
+
+    // build BlockOptions
+    let block_opt = BlockOptions::default();
+    
+    match &self.last_block {
+      None => {
+        Block {
+          head: BlockHead { 
+            block_id: BlockId::new(0), 
+            data_type_id: data_id, 
+            back_refs: BackRefs::default(), 
+            block_options: block_opt 
+          },
+          data: block_data
+        }
+      },
+      Some(last_block) => {
+        Block {
+          head: BlockHead { 
+            block_id: BlockId::new( last_block.head.block_id.value() + 1 ), 
+            data_type_id: data_id, 
+            back_refs: BackRefs::default(), 
+            block_options: block_opt 
+          },
+          data: block_data
+        }
+      }
+    }
+  }
+
+  /// Добавление данных в лог
+  fn append_data( &mut self, data_id: DataId, data: &[u8] ) -> Result<(), LogErr> {
+    let block = self.build_next_block(data_id, data);
+    self.append_block( &block )
+  }
+}
+
+trait GetPointer<FlatBuff> 
+where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
+{
+  /// Создания указателя на последний добавленый блок
+  fn pointer_to_end( self ) -> Result<LogPointer<FlatBuff>, LogErr>;
+}
+
+impl<FlatBuff> GetPointer<FlatBuff> for Arc<RwLock<LogFile<FlatBuff>>> 
+where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
+{
+  fn pointer_to_end( self ) -> Result<LogPointer<FlatBuff>, LogErr> {
+    match &self.read()?.last_block {
+      None => Err(LogErr::LogIsEmpty),
+      Some(last_block) => Ok(
+        LogPointer { log_file: self.clone(), current_block: last_block.clone() }
+      )
+    }
+  }
+}
+
+#[derive(Clone)]
+struct LogPointer<FlatBuff>
+where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
+{
+  log_file: Arc<RwLock<LogFile<FlatBuff>>>,
+  current_block: BlockHeadRead
+}
+
+impl<FlatBuff> LogPointer<FlatBuff> 
+where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
+{
+  fn current_head<'a>( &'a self ) -> &'a BlockHeadRead {
+    &self.current_block
+  }
+
+  fn current_data( &self ) -> Result<Box<Vec<u8>>, LogErr> {
+    let (block,_) = self.log_file.read()?.read_block_at( self.current_block.position.value() )?;
+    Ok(block.data)
+  }
+
+  fn previous( &self ) -> Result<Self,LogErr> {
+    let prev = self.log_file.read()?.read_previous_head(&self.current_block)?;
+    match prev {
+      Some(b) => {
+        Ok( Self { log_file: self.log_file.clone(), current_block: b } )
+      },
+      None => {
+        Err(LogErr::Generic(format!("can' move back")))
+      }
+    }
+  }
+
+  fn next( &self ) -> Result<Self,LogErr> {
+    let next = self.log_file.read()?.read_next_head(&self.current_block)?;
+    match next {
+      Some(b) => {
+        Ok( Self { log_file: self.log_file.clone(), current_block: b } )
+      },
+      None => {
+        Err(LogErr::Generic(format!("can' move forward")))
+      }
+    }
+  }
+}
+
+#[test]
+fn test_pointer() {
+  let bb = ByteBuff::new_empty_unlimited();
+  let log = Arc::new(RwLock::new(LogFile::new(bb).unwrap()));
+
+  {
+    let mut log = log.write().unwrap();
+    log.append_data(DataId::new(0), &[0,1,2]).unwrap();
+    log.append_data(DataId::new(0), &[10,11,22]).unwrap();
+    log.append_data(DataId::new(0), &[20,21,22]).unwrap();
+    log.append_data(DataId::new(0), &[30,31,32]).unwrap();
+    log.append_data(DataId::new(0), &[40,41,42]).unwrap();
+  }
+
+  let ptr = log.pointer_to_end().unwrap();
+  println!("pointer to {b_id} : {data:?}", b_id=ptr.current_head().head.block_id, data=ptr.current_data());
+
+  let ptr = ptr.previous().unwrap();
+  println!("pointer to {b_id} : {data:?}", b_id=ptr.current_head().head.block_id, data=ptr.current_data());
+
+  let ptr = ptr.previous().unwrap();
+  println!("pointer to {b_id} : {data:?}", b_id=ptr.current_head().head.block_id, data=ptr.current_data());
 }

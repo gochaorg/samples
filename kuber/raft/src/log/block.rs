@@ -202,12 +202,6 @@ pub struct BlockHead {
   pub block_options: BlockOptions,
 }
 
-/// Данные блока
-#[derive(Clone, Debug)]
-pub struct BlockData {
-  pub data: Box<Vec<u8>>
-}
-
 /// Ссылка на предыдущий блок
 #[derive(Clone, Debug)]
 pub struct BackRefs {
