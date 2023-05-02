@@ -419,6 +419,7 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
   }
 }
 
+/// Указатель на блок
 #[derive(Clone)]
 struct LogPointer<FlatBuff>
 where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
@@ -430,15 +431,18 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 impl<FlatBuff> LogPointer<FlatBuff> 
 where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 {
+  /// Возвращает заголовок текущего блока
   fn current_head<'a>( &'a self ) -> &'a BlockHeadRead {
     &self.current_block
   }
 
+  /// Возвращает данные текущего блока
   fn current_data( &self ) -> Result<Box<Vec<u8>>, LogErr> {
     let (block,_) = self.log_file.read()?.read_block_at( self.current_block.position.value() )?;
     Ok(block.data)
   }
 
+  /// Возвращает указатель на предыдущий блок
   fn previous( &self ) -> Result<Self,LogErr> {
     let prev = self.log_file.read()?.read_previous_head(&self.current_block)?;
     match prev {
@@ -451,6 +455,7 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
     }
   }
 
+  /// Возвращает указатель на следующий блок
   fn next( &self ) -> Result<Self,LogErr> {
     let next = self.log_file.read()?.read_next_head(&self.current_block)?;
     match next {
