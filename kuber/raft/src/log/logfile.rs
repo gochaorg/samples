@@ -100,7 +100,7 @@ pub struct LogFile<FlatBuff>
 where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 {
   buff: FlatBuff,
-  last_block: Option<BlockHeadRead>,
+  last_blocks: Box<Vec<BlockHeadRead>>,
 }
 
 impl<A> fmt::Display for LogFile<A> 
@@ -117,13 +117,14 @@ where A: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
       })
     );
 
-    match &self.last_block {
-      None => {
-        msg.push_str(" last block is none");
-      },
-      Some(last_block) => {
-        msg.push_str(&format!(" last block id={b_id} pos={pos}", pos=last_block.position, b_id=last_block.head.block_id));
-      }
+    for (idx, bh) in self.last_blocks.iter().enumerate() {
+      msg.push_str(&format!(
+        "\nlast block [{idx}] #{b_id} off={off} block_size={block_size} {data_size:?}", 
+        b_id=bh.head.block_id,
+        off=bh.position,
+        data_size=bh.data_size,
+        block_size=bh.block_size()
+      ));
     }
 
     write!(f, "{}", msg )
@@ -170,7 +171,7 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
       return Ok(
         LogFile {
           buff: buff,
-          last_block: None,
+          last_blocks: Box::new(Vec::<BlockHeadRead>::new()),
         }
       )
     }
@@ -178,10 +179,13 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
     let block_head_read 
       = Tail::try_read_head_at( buff_size as u64, &buff )?;
 
+    let mut last_blocks = Box::new(Vec::<BlockHeadRead>::new());
+    last_blocks.push(block_head_read.clone());
+
     Ok(
       LogFile {
         buff: buff,
-        last_block: Some(block_head_read.clone()),
+        last_blocks: last_blocks,
       }
     )
   }
@@ -192,16 +196,14 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
   /// - `block` - добавляемый блок
   #[allow(dead_code)]
   fn append_block( &mut self, block: &Block ) -> Result<(), LogErr> {
-    match &self.last_block {
-      None => {
-        self.append_first_block(block)
-      },
-      Some(last_block) => {
-        self.append_next_block(
-          last_block.position.value() + last_block.block_size(), 
-          block
-        )
-      }
+    if self.last_blocks.is_empty() {
+      self.append_first_block(block)
+    }else{
+      let last_block = &self.last_blocks[0];
+      self.append_next_block( 
+        last_block.position.value() + last_block.block_size(),
+        block
+      )
     }
   }
 
@@ -211,9 +213,17 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
   }
 
   /// Добавление второго и последующих блоков
+  /// 
+  /// Обновляет/вставляет ссылку на записанный блок в last_blocks[0]
   fn append_next_block( &mut self, position:u64, block:&Block ) -> Result<(), LogErr> {
     let writed_block = block.write_to(position, &mut self.buff)?;
-    self.last_block = Some( writed_block );
+
+    if self.last_blocks.is_empty() {
+      self.last_blocks.push(writed_block)
+    }else{
+      self.last_blocks[0] = writed_block;
+    }
+
     Ok(())
   }
 }
@@ -366,29 +376,28 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
     // build BlockOptions
     let block_opt = BlockOptions::default();
     
-    match &self.last_block {
-      None => {
-        Block {
-          head: BlockHead { 
-            block_id: BlockId::new(0), 
-            data_type_id: data_id, 
-            back_refs: BackRefs::default(), 
-            block_options: block_opt 
-          },
-          data: block_data
-        }
-      },
-      Some(last_block) => {
-        Block {
-          head: BlockHead { 
-            block_id: BlockId::new( last_block.head.block_id.value() + 1 ), 
-            data_type_id: data_id, 
-            back_refs: BackRefs::default(), 
-            block_options: block_opt 
-          },
-          data: block_data
-        }
+    if self.last_blocks.is_empty() {
+      return Block {
+        head: BlockHead { 
+          block_id: BlockId::new(0), 
+          data_type_id: data_id, 
+          back_refs: BackRefs::default(), 
+          block_options: block_opt 
+        },
+        data: block_data
       }
+    }
+
+    let last_block = &self.last_blocks[0];
+
+    Block {
+      head: BlockHead { 
+        block_id: BlockId::new( last_block.head.block_id.value() + 1 ), 
+        data_type_id: data_id, 
+        back_refs: BackRefs::default(), 
+        block_options: block_opt 
+      },
+      data: block_data
     }
   }
 
@@ -410,12 +419,13 @@ impl<FlatBuff> GetPointer<FlatBuff> for Arc<RwLock<LogFile<FlatBuff>>>
 where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 {
   fn pointer_to_end( self ) -> Result<LogPointer<FlatBuff>, LogErr> {
-    match &self.read()?.last_block {
-      None => Err(LogErr::LogIsEmpty),
-      Some(last_block) => Ok(
-        LogPointer { log_file: self.clone(), current_block: last_block.clone() }
-      )
+    let lock = self.read()?;
+    if lock.last_blocks.is_empty() {
+      return Err(LogErr::LogIsEmpty)
     }
+
+    let last_block = &lock.last_blocks[0];
+    Ok(LogPointer { log_file: self.clone(), current_block: last_block.clone() })
   }
 }
 
