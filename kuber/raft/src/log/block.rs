@@ -65,7 +65,7 @@ macro_rules! bytes_rw_new_type {
 }
 
 bytes_rw_new_type!(
-  #[derive(Copy, Clone, Debug, Default, PartialEq)]
+  #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
   pub struct BlockId(u32)
 );
 

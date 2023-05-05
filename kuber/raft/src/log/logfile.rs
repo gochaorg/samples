@@ -1,8 +1,7 @@
 use super::block::*;
 use super::super::bbuff::absbuff::*;
-use std::borrow::BorrowMut;
+use std::sync::{Arc, RwLock, PoisonError, RwLockReadGuard};
 use std::fmt;
-use std::sync::{Arc, Mutex, RwLock, PoisonError, RwLockReadGuard};
 
 #[cfg_attr(doc, aquamarine::aquamarine)]
 #[derive(Clone)]
@@ -274,8 +273,11 @@ impl<FlatBuff> LogFile<FlatBuff>
 where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 {
   /// Чтение заголовка в указанной позиции
-  fn read_head_at( &self, position:u64 ) -> Result<BlockHeadRead,LogErr> {    
-    let res = BlockHead::read_form(position as usize, &self.buff)?;
+  fn read_head_at<P:Into<FileOffset>>( &self, position:P ) -> Result<BlockHeadRead,LogErr> {    
+    let res = BlockHead::read_form(
+      position.into(), 
+      &self.buff
+    )?;
     Ok(res)
   }
 
@@ -286,8 +288,11 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
   /// 
   /// # Результат
   /// ( Блок, позиция следующего блока )
-  fn read_block_at( &self, position:u64 ) -> Result<(Block,u64), LogErr> {
-    let res = Block::read_from(position, &self.buff)?;
+  fn read_block_at<P:Into<FileOffset>>( &self, position:P ) -> Result<(Block,u64), LogErr> {
+    let res = Block::read_from(
+      position.into().value(), 
+      &self.buff
+    )?;
     Ok(res)
   }
 
@@ -340,7 +345,7 @@ fn test_navigation() {
   log.append_block(&b1).unwrap();
   log.append_block(&b2).unwrap();
 
-  let r0 = log.read_head_at(0).unwrap();
+  let r0 = log.read_head_at(0u64).unwrap();
   assert!(r0.head.block_id == b0.head.block_id);
 
   let r1 = log.read_next_head(&r0).unwrap();
@@ -464,7 +469,7 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 
 /// Указатель на блок
 #[derive(Clone)]
-struct LogPointer<FlatBuff>
+pub struct LogPointer<FlatBuff>
 where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 {
   log_file: Arc<RwLock<LogFile<FlatBuff>>>,
@@ -475,18 +480,18 @@ impl<FlatBuff> LogPointer<FlatBuff>
 where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 {
   /// Возвращает заголовок текущего блока
-  fn current_head<'a>( &'a self ) -> &'a BlockHeadRead {
+  pub fn current_head<'a>( &'a self ) -> &'a BlockHeadRead {
     &self.current_block
   }
 
   /// Возвращает данные текущего блока
-  fn current_data( &self ) -> Result<Box<Vec<u8>>, LogErr> {
+  pub fn current_data( &self ) -> Result<Box<Vec<u8>>, LogErr> {
     let (block,_) = self.log_file.read()?.read_block_at( self.current_block.position.value() )?;
     Ok(block.data)
   }
 
   /// Возвращает указатель на предыдущий блок
-  fn previous( &self ) -> Result<Self,LogErr> {
+  pub fn previous( &self ) -> Result<Self,LogErr> {
     let prev = self.log_file.read()?.read_previous_head(&self.current_block)?;
     match prev {
       Some(b) => {
@@ -499,7 +504,7 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
   }
 
   /// Возвращает указатель на следующий блок
-  fn next( &self ) -> Result<Self,LogErr> {
+  pub fn next( &self ) -> Result<Self,LogErr> {
     let next = self.log_file.read()?.read_next_head(&self.current_block)?;
     match next {
       Some(b) => {
@@ -510,6 +515,67 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
       }
     }
   }
+
+  /// Прыжок назад к определенному блоку
+  fn jump_back( &self, block_id:BlockId ) -> Result<Self,LogErr> {
+    // Указываем на себя ?
+    if self.current_head().head.block_id.value() == block_id.value() {
+      return Ok( self.clone() )
+    }
+
+    // Указываем прыжок в перед ?
+    if self.current_head().head.block_id.value() < block_id.value() {
+      return Err(LogErr::Generic(format!("can' jump forward")))
+    }
+    
+    let back_refs = self.current_head().head.back_refs.refs.clone();
+
+    // Обратных ссылок нет ?
+    if back_refs.is_empty() {
+      let prev = self.previous()?;
+      return prev.jump_back(block_id)
+    }
+
+    let found
+      = back_refs.iter().zip(back_refs.iter().skip(1))
+      .filter(|((a_id,a_off),(b_id,b_off))| 
+        {
+          let (a_id, a_off, b_id, b_off) = 
+          if b_id < a_id {
+            (b_id, b_off, a_id, a_off)
+          } else {
+            (a_id, a_off, b_id, b_off)
+          };
+          *a_id < block_id && block_id <= *b_id
+        }
+    ).map(|((a_id,a_off),(b_id,b_off))| 
+      FileOffset::new(a_off.value().max(b_off.value()))
+    ).next();
+
+    // Нашли в приемлемом диапазоне ?
+    if found.is_some() {
+      let block_head = self.log_file.read()?.read_head_at(found.unwrap())?;
+      let ptr = Self {
+        log_file: self.log_file.clone(), current_block: block_head
+      };
+      return ptr.jump_back(block_id);
+    }
+
+    let (b_id,b_off) = back_refs[0].clone();
+
+    // Первый блок может указывает ?
+    if block_id.value() <= b_id.value() {
+      let block_head = self.log_file.read()?.read_head_at(b_off)?;
+      let ptr = Self {
+        log_file: self.log_file.clone(), current_block: block_head
+      };
+      return ptr.jump_back(block_id);
+    }
+
+    // Последняя попытка
+    let prev = self.previous()?;
+    return prev.jump_back(block_id)
+}
 }
 
 #[test]
@@ -525,7 +591,7 @@ fn test_pointer() {
     }
   }
 
-  let mut ptr = log.pointer_to_end().unwrap();
+  let mut ptr = log.clone().pointer_to_end().unwrap();
   loop {
     let block_head = ptr.current_head();
     // pointer to BlockId(16) : Ok([16, 17, 18]) FileOffset(954)
@@ -544,11 +610,19 @@ fn test_pointer() {
     println!("");
 
     match ptr.previous() {
-      Err(err) => break,
+      Err(_err) => break,
       Ok(next_ptr) => {
         ptr = next_ptr
       }
     }
   }
+  
+  ptr = log.clone().pointer_to_end().unwrap();
+  let ptr1 = ptr.jump_back(
+    ptr.current_head().head.block_id
+  ).unwrap();
+  assert!(ptr.current_head().head.block_id == ptr1.current_head().head.block_id);
+
+  let ptr1 = ptr.jump_back(BlockId::new(9)).unwrap();
 
 }
