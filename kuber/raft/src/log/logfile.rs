@@ -389,12 +389,45 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
     }
 
     let last_block = &self.last_blocks[0];
+    let block_id = BlockId::new( last_block.head.block_id.value() + 1 );
+
+    let mut update_ref = |ref_idx:usize| {
+      if ref_idx >= self.last_blocks.len() {
+        while ref_idx >= self.last_blocks.len() {
+          match self.last_blocks.last() {
+            Some(last) => {
+              self.last_blocks.push(last.clone())
+            },
+            None => {}
+          }
+        }
+      } else {
+        self.last_blocks[ref_idx] = self.last_blocks[ref_idx-1].clone()
+      }
+    };
+
+    for i in 1..32 {
+      let level = 32 - i;
+      let n = u32::pow(2, level);
+      let idx = level;
+      if block_id.value() % n == 0 { 
+        update_ref(idx as usize) 
+      }
+    }
+
+    let back_refs:Vec<(BlockId,FileOffset)> = self.last_blocks.iter()
+      .map( |bhr| 
+        (bhr.head.block_id.clone(), bhr.position.clone()) )
+      .collect()
+      ;
+
+    let back_refs = Box::new(back_refs);
 
     Block {
       head: BlockHead { 
-        block_id: BlockId::new( last_block.head.block_id.value() + 1 ), 
+        block_id: block_id, 
         data_type_id: data_id, 
-        back_refs: BackRefs::default(), 
+        back_refs: BackRefs { refs: back_refs }, 
         block_options: block_opt 
       },
       data: block_data
@@ -486,19 +519,36 @@ fn test_pointer() {
 
   {
     let mut log = log.write().unwrap();
-    log.append_data(DataId::new(0), &[0,1,2]).unwrap();
-    log.append_data(DataId::new(0), &[10,11,22]).unwrap();
-    log.append_data(DataId::new(0), &[20,21,22]).unwrap();
-    log.append_data(DataId::new(0), &[30,31,32]).unwrap();
-    log.append_data(DataId::new(0), &[40,41,42]).unwrap();
+
+    for n in 0u8 .. 130 {
+      log.append_data(DataId::new(0), &[n,n+1,n+2]).unwrap();
+    }
   }
 
-  let ptr = log.pointer_to_end().unwrap();
-  println!("pointer to {b_id} : {data:?}", b_id=ptr.current_head().head.block_id, data=ptr.current_data());
+  let mut ptr = log.pointer_to_end().unwrap();
+  loop {
+    let block_head = ptr.current_head();
+    // pointer to BlockId(16) : Ok([16, 17, 18]) FileOffset(954)
+    print!("pointer to #{b_id:<6} : {data:<18}", 
+      b_id=block_head.head.block_id.value(), 
+      data=format!("{:?}",ptr.current_data())
+    );
 
-  let ptr = ptr.previous().unwrap();
-  println!("pointer to {b_id} : {data:?}", b_id=ptr.current_head().head.block_id, data=ptr.current_data());
+    print!(" back ref");
+    for (idx, (b_id, b_off)) in block_head.head.back_refs.refs.iter().enumerate() {
+      print!(" [{idx:0>2}] #{b_id:<4} off={b_off:<6}",
+        b_id  = b_id.value(),
+        b_off = b_off.value()
+      )
+    }
+    println!("");
 
-  let ptr = ptr.previous().unwrap();
-  println!("pointer to {b_id} : {data:?}", b_id=ptr.current_head().head.block_id, data=ptr.current_data());
+    match ptr.previous() {
+      Err(err) => break,
+      Ok(next_ptr) => {
+        ptr = next_ptr
+      }
+    }
+  }
+
 }
