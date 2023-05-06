@@ -538,7 +538,7 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
   }
 
   /// Прыжок к определенному блоку
-  fn jump( &self, block_id:BlockId ) -> Result<Self,LogErr> {
+  pub fn jump( &self, block_id:BlockId ) -> Result<Self,LogErr> {
     // Указываем на себя ?
     if self.current_head().head.block_id.value() == block_id.value() {
       return Ok( self.clone() )
