@@ -478,6 +478,11 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
       return Ok( self.clone() )
     }
 
+    // Перемещение к предыдущему
+    if (block_id.value() - self.current_head().head.block_id.value()) == 1 {
+      return self.previous();
+    }
+
     // Указываем прыжок в перед ?
     if self.current_head().head.block_id.value() < block_id.value() {
       return Err(LogErr::Generic(format!("can' jump forward")))
@@ -530,7 +535,37 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
     // Последняя попытка
     let prev = self.previous()?;
     return prev.jump_back(block_id)
-}
+  }
+
+  /// Прыжок к определенному блоку
+  fn jump( &self, block_id:BlockId ) -> Result<Self,LogErr> {
+    // Указываем на себя ?
+    if self.current_head().head.block_id.value() == block_id.value() {
+      return Ok( self.clone() )
+    }
+
+    // Указываем прыжок назад ?
+    if self.current_head().head.block_id.value() > block_id.value() {
+      return self.jump_back(block_id)
+    }
+
+    // Прыжок к следующему
+    if (block_id.value() - self.current_head().head.block_id.value()) == 1 {
+      return self.next();
+    }
+
+    // Прыжок вперед
+    {
+      let last_ptr = self.clone().log_file.pointer_to_end()?;
+      if last_ptr.current_head().head.block_id < block_id {
+        return Err( LogErr::Generic(format!(
+          "can't jump outside, last block id = {}, jump to={block_id}", 
+          last_ptr.current_head().head.block_id)) );
+      }
+
+      return last_ptr.jump_back(block_id);
+    }
+  }
 }
 
 #[test]
