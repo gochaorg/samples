@@ -1,6 +1,8 @@
 use std::{collections::HashMap};
 
 /// Метрики
+/// 
+/// Содержит счетчики которые монотонно увеличиваются
 pub trait Metrics {
     /// Увеличивает значение конкретной метрики
     fn inc<'a,'b>( &'a mut self, name:&'b str );
@@ -21,6 +23,7 @@ impl Metrics for DummyCounters {
     }
 }
 
+/// Счетчики расположенные в памяти
 #[derive(Debug,Clone)]
 pub struct Counters {
     pub map: Box<HashMap<String,u64>>
@@ -72,6 +75,9 @@ impl<'a> IntoIterator for &'a Counters {
     }
 }
 
+/// Итератор по копии счетчиков
+/// 
+/// Названия метрик отсортированы
 pub struct CountersItrBySnapshot {
     counters: Counters,
     keys: Box<Vec<String>>,
@@ -80,9 +86,11 @@ pub struct CountersItrBySnapshot {
 
 impl From<Counters> for CountersItrBySnapshot {
     fn from(value: Counters) -> Self {
+        let mut keys:Box<Vec<String>> = Box::new(value.map.keys().map(|k|k.clone()).collect());
+        keys.sort();
         Self {
             counters: value.clone(),
-            keys: Box::new(value.map.keys().map(|k|k.clone()).collect()),
+            keys: keys,
             pointer: 0
         }
     }
