@@ -7,6 +7,9 @@ mod log;
 /// Работа с байтовым буфером
 mod bbuff;
 
+/// Метрики
+mod perf;
+
 fn main() {
     println!("Hello, world!");
 }
