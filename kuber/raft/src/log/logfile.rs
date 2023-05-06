@@ -401,7 +401,7 @@ where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
   }
 }
 
-trait GetPointer<FlatBuff> 
+pub trait GetPointer<FlatBuff> 
 where FlatBuff: ReadBytesFrom+WriteBytesTo+BytesCount+ResizeBytes+Clone
 {
   /// Создания указателя на последний добавленый блок
