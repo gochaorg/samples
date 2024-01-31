@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>simple notes</title>
+<script defer>
+
+function refreshNotes() {
+  fetch("/note", {
+  "method": "GET",
+  "mode": "cors",
+  }).then( r => { 
+    if( r.ok ){
+      r.json().then( j => {
+        console.log(j)
+        j.notes.forEach( note => {
+          let tr = document.createElement('tr');
+          let td0 = document.createElement('td');
+          td0.textContent = note;
+          tr.appendChild(td0);
+          document.querySelector('#notes').appendChild(tr)
+        });
+      })
+    }}
+  )
+}
+
+</script>
+</head>
+    <body>
+        <button onclick="refreshNotes()">refresh</button>
+        <table id="notes">
+        </table>
+    </body>
+</html>
