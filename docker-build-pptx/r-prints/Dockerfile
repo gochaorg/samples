@@ -1,3 +1,3 @@
 FROM scratch
-ADD target/x86_64-unknown-linux-musl/debug/r-prints /
+ADD target/x86_64-unknown-linux-musl/release/r-prints /
 ENTRYPOINT ["/r-prints"]
