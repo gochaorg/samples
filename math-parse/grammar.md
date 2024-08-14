@@ -329,21 +329,28 @@ Ast (Abstract Syntax Tree) - это некий абстрактный interface,
 - `Add {` - операция сложения  
   - `left (): Ast` - левый операнд  
   - `right(): Ast` - правый операнд  
+  - _см. [Полный исходный код](src/main/java/org/example/grammar/math/ast/AddAst.java)_
 - `Sub {` - операция вычитания  
   - `left (): Ast` - левый операнд  
   - `right(): Ast`- правый операнд  
+  - _см. [Полный исходный код](src/main/java/org/example/grammar/math/ast/SubAst.java)_
 - `Mult {` - операция умножения  
   - `left (): Ast` - левый операнд  
   - `right(): Ast`- правый операнд  
+  - _см. [Полный исходный код](src/main/java/org/example/grammar/math/ast/MulAst.java)_
 - `Div {` - операция деления  
   - `left (): Ast` - левый операнд  
   - `right(): Ast`- правый операнд  
+  - _см. [Полный исходный код](src/main/java/org/example/grammar/math/ast/DivAst.java)_
 - `UnaryPlus {` - унарный плюс  
   - `value (): Ast` - операнд  
+  - _см. [Полный исходный код](src/main/java/org/example/grammar/math/ast/UnaryPlusAst.java)_
 - `UnaryMinus {` - унарный минус  
   - `value (): Ast` - операнд  
+  - _см. [Полный исходный код](src/main/java/org/example/grammar/math/ast/UnaryMinusAst.java)_
 - `Atom {` - число  
   - `value(): NumToken` - лексема числа
+  - _см. [Полный исходный код](src/main/java/org/example/grammar/math/ast/NumAst.java)_
 
 То же дерево должно превратится в следующее дерево AST
 
@@ -458,3 +465,115 @@ Atom ::= **Sum** | NumToken
 ![](doc/g11.png)
 
 Последовательность выделена шагами от 1 до 33
+
+В исходном коде Ast определено так
+
+```java
+/**
+ * Узел абстрактного синтаксического дерева
+ */
+public interface Ast {
+    /**
+     * Указатель на начало в исходном тексте
+     * @return начало узла
+     */
+    Pointer.ListPointer<Token> begin();
+
+    /**
+     * Указатель на конец в исходном тексте
+     * @return конец узла
+     */
+    Pointer.ListPointer<Token> end();
+
+    /**
+     * Интерпретация значения
+     * @return значение
+     */
+    Num eval();
+}
+```
+
+А конкретное вычисление например умножения выполнено так:
+
+```java
+@Override
+public Num eval() {
+    return getLeft().eval().multiply( getRight().eval() );
+}
+```
+
+- getLeft() - Левый операнд: <br> _левый операнд_ `+` _правый операнд_
+- getLeft().eval() - Вычисление значения левого операнда
+- getLeft().eval().multiply( Num num ) - умножение значения левого операнда на значение правого
+- getRight() - Правый операнд `+`
+- getRight().eval() - Вычисление значения правого операнда
+
+Примеры работы
+========================
+
+[См. полный код теста](src/test/java/org/example/grammar/math/ast/MathParserTest.java)_
+
+Парсинг `1`
+----------------
+
+AST дерево
+
+    NumAst
+      value:
+        NumToken{begin=CharPointer{offset=0}, end=CharPointer{offset=1}, value=1.0}]
+
+Значение 
+
+    1.0
+
+Парсинг `1 + 2`
+------------------
+
+```
+AddAst
+  left:
+  |  NumAst
+  |    value:
+  |      NumToken{begin=CharPointer{offset=0}, end=CharPointer{offset=1}, value=1.0}
+  right:
+  |  NumAst
+  |    value:
+  |      NumToken{begin=CharPointer{offset=4}, end=CharPointer{offset=5}, value=2.0}
+```
+
+Значение 
+
+    3.0
+
+Парсинг `1+(2+3)*4`
+-------------------------
+
+```
+AddAst
+  left:
+  |  NumAst
+  |    value:
+  |      NumToken{value=1.0}
+  right:
+  |  MulAst
+  |    left:
+  |    |  ParenthesesAst
+  |    |    value:
+  |    |    |  AddAst
+  |    |    |    left:
+  |    |    |    |  NumAst
+  |    |    |    |    value:
+  |    |    |    |      NumToken{value=2.0}
+  |    |    |    right:
+  |    |    |    |  NumAst
+  |    |    |    |    value:
+  |    |    |    |      NumToken{value=3.0}
+  |    right:
+  |    |  NumAst
+  |    |    value:
+  |    |      NumToken{value=4.0}
+```
+
+Значение 
+
+    21.0

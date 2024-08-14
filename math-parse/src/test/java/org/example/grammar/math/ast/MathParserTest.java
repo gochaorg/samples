@@ -1,6 +1,6 @@
-package org.example.grammar.math.lex;
+package org.example.grammar.math.ast;
 
-import org.example.grammar.math.ast.MathParser;
+import org.example.grammar.math.lex.MathTokenParser;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;

@@ -111,6 +111,8 @@ _См. [полный исходный код](src/main/java/org/example/grammar/
    - Если пробел, то повтор шага (2)  
    - Иначе завершить с тем, что накопилось
 
+_См. [полный исходный код](src/main/java/org/example/grammar/math/lex/WhiteSpaceToken.java#L18)_
+
 Здесь не указано, но под словом "очередной" - выполняется операция сдвига указателя
 
 Условно алгоритм можно изобразить как на диаграмме выше
@@ -121,14 +123,82 @@ _См. [полный исходный код](src/main/java/org/example/grammar/
 
 - Есть только одна входящая стрелка
 
+Вот так это выглядит в коде
+
+```java
+public class WhiteSpaceToken extends AbstractToken {
+   public WhiteSpaceToken(Pointer.CharPointer begin, Pointer.CharPointer end) {
+      super(begin, end);
+   }
+
+    /**
+     * Парсер лексемы
+     */
+    public static final TokenParser parser = ptr ->
+    {
+       Pointer.CharPointer ptrBegin = ptr;
+
+       // Проверка первого пробела
+       Optional<Pointer.CharPointer> next = ptr.get().flatMap(c -> c == ' '
+            ? Optional.of(ptrBegin.move(1))
+            : Optional.empty()
+        );
+
+        if( next.isEmpty() )return Optional.empty();
+        
+       // Получаем указатель на следующий возможный пробел
+       ptr = next.get();
+
+       // Проверка очередного пробела
+        while (true){
+            var fptr2 = ptr;
+            var next2 = ptr.get().flatMap(c -> c == ' '
+                ? Optional.of(fptr2.move(1))
+                : Optional.empty()
+            );
+
+            if( next2.isEmpty() )break;
+            ptr = next2.get();
+        }
+
+        return Optional.of(
+            new WhiteSpaceToken(ptrBegin, ptr)
+        );
+    };
+}
+```
+
 ## Парсинг чисел
 
-![](doc/img1.png)
+```mermaid
+stateDiagram-v2
+    d1: Цифра
+    d2: Цифра
+    d3: Цифра
+    dot: Точка
+    dot2: Точка
+    
+    [*] --> d1
+    [*] --> dot2
+    d1 --> d1
+    d1 --> dot
+    dot --> d2
+    d2 --> d2
+    d2 --> [*]
+    dot --> [*]
+    d1 --> [*]
+    dot2 --> d3
+    d3 --> d3
+    d3 --> [*]
+```
 
-На этой диаграмме число представлено как два возможных варианта
+На этой диаграмме число представлено как несколько возможных варианта
 
 1. **цифра** (мин 1 символ)  
 2. **цифра** (мин 1 символ) **точка цифра** (мин 0 символов)
+3. **точка цифра** (мин 1 символ)
+
+_См. [полный исходный код](src/main/java/org/example/grammar/math/lex/NumToken.java)_
 
 ## **Общий пирсинг лексем**
 
@@ -152,3 +222,18 @@ _См. [полный исходный код](src/main/java/org/example/grammar/
 В общем выглядит так:
 
 ![](doc/img3.png)
+
+```java
+ public static final TokenParser parser = ptr ->
+     WhiteSpaceToken.parser.parseToken(ptr)
+         .or(() -> NumToken.parser.parseToken(ptr))
+         .or(() -> CloseParenthesesToken.parser.parseToken(ptr))
+         .or(() -> OpenParenthesesToken.parser.parseToken(ptr))
+         .or(() -> PlusToken.parser.parseToken(ptr))
+         .or(() -> MinusToken.parser.parseToken(ptr))
+         .or(() -> MultiplyToken.parser.parseToken(ptr))
+         .or(() -> DivisionToken.parser.parseToken(ptr))
+     ;
+```
+
+_См. [полный исходный код](src/main/java/org/example/grammar/math/lex/MathTokenParser.java)_
