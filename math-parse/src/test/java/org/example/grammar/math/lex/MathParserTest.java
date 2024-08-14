@@ -140,10 +140,6 @@ public class MathParserTest {
         );
 
         System.out.println(astOpt);
-        assertTrue(astOpt.isPresent());
-
-        var ast = astOpt.get();
-        System.out.println(ast.eval());
-//        assertTrue(ast.eval().value().map(v -> v==-1.0).orElse(false));
+        assertTrue(astOpt.isEmpty());
     }
 }

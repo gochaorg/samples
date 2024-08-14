@@ -11,20 +11,82 @@ import org.example.grammar.math.lex.PlusToken;
 import org.example.grammar.math.lex.Token;
 
 import java.util.Optional;
+import java.util.function.Function;
 
 /**
  * Парсер математических выражений
  */
 public class MathParser {
-    public Optional<Ast> parse(Pointer.ListPointer<Token> ptr) {
-        if (ptr == null) throw new IllegalArgumentException("ptr==null");
-        return parseSum(ptr);
+    //region fullyParsed : boolean = true - Проверять что входная последовательность токенов разобрана полностью
+    private boolean fullyParsed = true;
+
+    /**
+     * Проверять что входная последовательность токенов разобрана полностью
+     * @return true - есть проверка
+     */
+    public boolean isFullyParsed() {
+        return fullyParsed;
     }
 
-    public Optional<Ast> parseSum(Pointer.ListPointer<Token> ptr) {
+    /**
+     * Проверять что входная последовательность токенов разобрана полностью
+     * @param fullyParsed true - есть проверка
+     */
+    public void setFullyParsed(boolean fullyParsed) {
+        this.fullyParsed = fullyParsed;
+    }
+    //endregion
+
+    private boolean unaryHighPriority = false;
+
+    public boolean isUnaryHighPriority() {
+        return unaryHighPriority;
+    }
+
+    public void setUnaryHighPriority(boolean unaryHighPriority) {
+        this.unaryHighPriority = unaryHighPriority;
+        if( unaryHighPriority ){
+            mulNestedParser = ptr -> parseUnary(ptr, this::parseAtom);
+            parseNestedParser = this::parseSum;
+        }else{
+            mulNestedParser = this::parseAtom;
+            parseNestedParser = ptr -> parseUnary(ptr, this::parseSum);
+        }
+    }
+
+    private Function<Pointer.ListPointer<Token>,Optional<Ast>> mulNestedParser = this::parseAtom;
+    private Function<Pointer.ListPointer<Token>,Optional<Ast>> parseNestedParser = ptr -> parseUnary(ptr, this::parseSum);
+
+
+    /**
+     * Уровень вложенности вызова {@link #parse(Pointer.ListPointer)}
+      */
+    private int parseLevel = 0;
+
+    /**
+     * Парсинг выражения
+     * @param ptr указатель на лексемы
+     * @return выражение
+     */
+    public Optional<Ast> parse(Pointer.ListPointer<Token> ptr) {
+        if (ptr == null) throw new IllegalArgumentException("ptr==null");
+        Optional<Ast> result = null;
+        try {
+            parseLevel++;
+            result = parseUnary(ptr, this::parseSum);
+        } finally {
+            parseLevel--;
+        }
+        if( parseLevel==0 && result.isPresent() && fullyParsed && !result.get().end().isEOF() ){
+            return Optional.empty();
+        }
+        return result;
+    }
+
+    private Optional<Ast> parseSum(Pointer.ListPointer<Token> ptr) {
         if (ptr == null) throw new IllegalArgumentException("ptr==null");
 
-        Optional<Ast> expOpt = parseMul(ptr);
+        Optional<Ast> expOpt = parseMul(ptr, mulNestedParser);
         if (expOpt.isEmpty()) return Optional.empty();
 
         while (true) {
@@ -34,7 +96,7 @@ public class MathParser {
 
             if (!(opPlus.isPresent() || opMinus.isPresent())) break;
 
-            var rightOpt = parseMul(exp.end().move(1));
+            var rightOpt = parseMul(exp.end().move(1), mulNestedParser);
             if (rightOpt.isEmpty()) break;
             var right = rightOpt.get();
 
@@ -48,10 +110,10 @@ public class MathParser {
         return expOpt;
     }
 
-    public Optional<Ast> parseMul(Pointer.ListPointer<Token> ptr) {
+    private Optional<Ast> parseMul(Pointer.ListPointer<Token> ptr, Function<Pointer.ListPointer<Token>,Optional<Ast>> nestedParser) {
         if (ptr == null) throw new IllegalArgumentException("ptr==null");
 
-        Optional<Ast> expOpt = parseUnary(ptr);
+        Optional<Ast> expOpt = nestedParser.apply(ptr);
         if (expOpt.isEmpty()) return Optional.empty();
 
         while (true) {
@@ -61,7 +123,7 @@ public class MathParser {
 
             if (!(opMul.isPresent() || opDiv.isPresent())) break;
 
-            var rightOpt = parseUnary(exp.end().move(1));
+            var rightOpt = nestedParser.apply(exp.end().move(1));
             if (rightOpt.isEmpty()) break;
             var right = rightOpt.get();
 
@@ -75,7 +137,7 @@ public class MathParser {
         return expOpt;
     }
 
-    public Optional<Ast> parseUnary(Pointer.ListPointer<Token> ptr) {
+    private Optional<Ast> parseUnary(Pointer.ListPointer<Token> ptr, Function<Pointer.ListPointer<Token>,Optional<Ast>> nestedParser) {
         if (ptr == null) throw new IllegalArgumentException("ptr==null");
 
         var opPlus = ptr.get().flatMap(t -> t instanceof PlusToken ? Optional.of(t) : Optional.empty());
@@ -86,7 +148,7 @@ public class MathParser {
                 ? ptr.move(1)
                 : ptr;
 
-        var atom = parseAtom(aPtr);
+        var atom = nestedParser.apply(aPtr);
 
         if (atom.isPresent()) {
             if (opPlus.isPresent()) {
@@ -99,7 +161,7 @@ public class MathParser {
         return atom;
     }
 
-    public Optional<Ast> parseAtom(Pointer.ListPointer<Token> ptr) {
+    private Optional<Ast> parseAtom(Pointer.ListPointer<Token> ptr) {
         if (ptr == null) throw new IllegalArgumentException("ptr==null");
         var tokOpt = ptr.get();
 
