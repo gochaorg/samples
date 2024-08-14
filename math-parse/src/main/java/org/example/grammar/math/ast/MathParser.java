@@ -35,14 +35,33 @@ public class MathParser {
     public void setFullyParsed(boolean fullyParsed) {
         this.fullyParsed = fullyParsed;
     }
+
+    /**
+     * Проверять что входная последовательность токенов разобрана полностью
+     * @param value true - есть проверка
+     * @return SELF ссылка
+     */
+    public MathParser fullyParsed(boolean value){
+        setFullyParsed(value);
+        return this;
+    }
     //endregion
 
+    //region unaryHighPriority : boolean = false - Унарный оператор имеет высокий приоритет
     private boolean unaryHighPriority = false;
 
+    /**
+     * Унарный оператор имеет высокий приоритет
+     * @return true - высокий приоритет
+     */
     public boolean isUnaryHighPriority() {
         return unaryHighPriority;
     }
 
+    /**
+     * Унарный оператор имеет высокий приоритет
+     * @param unaryHighPriority true - высокий приоритет
+     */
     public void setUnaryHighPriority(boolean unaryHighPriority) {
         this.unaryHighPriority = unaryHighPriority;
         if( unaryHighPriority ){
@@ -54,9 +73,19 @@ public class MathParser {
         }
     }
 
+    /**
+     * Унарный оператор имеет высокий приоритет
+     * @param value true - высокий приоритет
+     * @return SELF ссылка
+     */
+    public MathParser unaryHighPriority(boolean value){
+        this.setUnaryHighPriority(value);
+        return this;
+    }
+    //endregion
+
     private Function<Pointer.ListPointer<Token>,Optional<Ast>> mulNestedParser = this::parseAtom;
     private Function<Pointer.ListPointer<Token>,Optional<Ast>> parseNestedParser = ptr -> parseUnary(ptr, this::parseSum);
-
 
     /**
      * Уровень вложенности вызова {@link #parse(Pointer.ListPointer)}
@@ -73,7 +102,7 @@ public class MathParser {
         Optional<Ast> result = null;
         try {
             parseLevel++;
-            result = parseUnary(ptr, this::parseSum);
+            result = parseNestedParser.apply(ptr);
         } finally {
             parseLevel--;
         }

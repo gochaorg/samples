@@ -142,4 +142,16 @@ public class MathParserTest {
         System.out.println(astOpt);
         assertTrue(astOpt.isEmpty());
     }
+
+    @Test
+    public void unary3highPrio(){
+        var astOpt = new MathParser().unaryHighPriority(true).parse(
+            MathTokenParser.tokenPointerOf("1--1")
+        );
+
+        System.out.println(astOpt);
+        assertTrue(astOpt.isPresent());
+
+        System.out.println(astOpt.get().eval());
+    }
 }
