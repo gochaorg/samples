@@ -16,12 +16,12 @@ import java.util.Optional;
  * Парсер математических выражений
  */
 public class MathParser {
-    public static Optional<Ast> parse(Pointer.ListPointer<Token> ptr) {
+    public Optional<Ast> parse(Pointer.ListPointer<Token> ptr) {
         if (ptr == null) throw new IllegalArgumentException("ptr==null");
         return parseSum(ptr);
     }
 
-    public static Optional<Ast> parseSum(Pointer.ListPointer<Token> ptr) {
+    public Optional<Ast> parseSum(Pointer.ListPointer<Token> ptr) {
         if (ptr == null) throw new IllegalArgumentException("ptr==null");
 
         Optional<Ast> expOpt = parseMul(ptr);
@@ -48,7 +48,7 @@ public class MathParser {
         return expOpt;
     }
 
-    public static Optional<Ast> parseMul(Pointer.ListPointer<Token> ptr) {
+    public Optional<Ast> parseMul(Pointer.ListPointer<Token> ptr) {
         if (ptr == null) throw new IllegalArgumentException("ptr==null");
 
         Optional<Ast> expOpt = parseUnary(ptr);
@@ -75,7 +75,7 @@ public class MathParser {
         return expOpt;
     }
 
-    public static Optional<Ast> parseUnary(Pointer.ListPointer<Token> ptr) {
+    public Optional<Ast> parseUnary(Pointer.ListPointer<Token> ptr) {
         if (ptr == null) throw new IllegalArgumentException("ptr==null");
 
         var opPlus = ptr.get().flatMap(t -> t instanceof PlusToken ? Optional.of(t) : Optional.empty());
@@ -99,7 +99,7 @@ public class MathParser {
         return atom;
     }
 
-    public static Optional<Ast> parseAtom(Pointer.ListPointer<Token> ptr) {
+    public Optional<Ast> parseAtom(Pointer.ListPointer<Token> ptr) {
         if (ptr == null) throw new IllegalArgumentException("ptr==null");
         var tokOpt = ptr.get();
 

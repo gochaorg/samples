@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class MathParserTest {
     @Test
     public void singleNum(){
-        var astOpt = MathParser.parse(
+        var astOpt = new MathParser().parse(
             MathTokenParser.tokenPointerOf("1")
         );
 
@@ -22,7 +22,7 @@ public class MathParserTest {
 
     @Test
     public void sumNum(){
-        var astOpt = MathParser.parse(
+        var astOpt = new MathParser().parse(
             MathTokenParser.tokenPointerOf("1 + 2")
         );
 
@@ -36,7 +36,7 @@ public class MathParserTest {
 
     @Test
     public void minusNum(){
-        var astOpt = MathParser.parse(
+        var astOpt = new MathParser().parse(
             MathTokenParser.tokenPointerOf("1 - 2")
         );
 
@@ -50,7 +50,7 @@ public class MathParserTest {
 
     @Test
     public void divNum(){
-        var astOpt = MathParser.parse(
+        var astOpt = new MathParser().parse(
             MathTokenParser.tokenPointerOf("2 / 2")
         );
 
@@ -64,7 +64,7 @@ public class MathParserTest {
 
     @Test
     public void mulNum(){
-        var astOpt = MathParser.parse(
+        var astOpt = new MathParser().parse(
             MathTokenParser.tokenPointerOf("2 * 2")
         );
 
@@ -78,7 +78,7 @@ public class MathParserTest {
 
     @Test
     public void opPrio(){
-        var astOpt = MathParser.parse(
+        var astOpt = new MathParser().parse(
             MathTokenParser.tokenPointerOf("2 + 2 * 2")
         );
 
@@ -92,7 +92,7 @@ public class MathParserTest {
 
     @Test
     public void assocOrder(){
-        var astOpt = MathParser.parse(
+        var astOpt = new MathParser().parse(
             MathTokenParser.tokenPointerOf("1 + 2 + 3 + 4 + 5")
         );
 
@@ -107,7 +107,7 @@ public class MathParserTest {
 
     @Test
     public void parethneses(){
-        var astOpt = MathParser.parse(
+        var astOpt = new MathParser().parse(
             MathTokenParser.tokenPointerOf("1+(2+3)*4")
         );
 
@@ -117,5 +117,33 @@ public class MathParserTest {
         var ast = astOpt.get();
         System.out.println(ast.eval());
         assertTrue(ast.eval().value().map(v -> v==21.0).orElse(false));
+    }
+
+    @Test
+    public void unary1(){
+        var astOpt = new MathParser().parse(
+            MathTokenParser.tokenPointerOf("-1")
+        );
+
+        System.out.println(astOpt);
+        assertTrue(astOpt.isPresent());
+
+        var ast = astOpt.get();
+        System.out.println(ast.eval());
+        assertTrue(ast.eval().value().map(v -> v==-1.0).orElse(false));
+    }
+
+    @Test
+    public void unary2(){
+        var astOpt = new MathParser().parse(
+            MathTokenParser.tokenPointerOf("1--1")
+        );
+
+        System.out.println(astOpt);
+        assertTrue(astOpt.isPresent());
+
+        var ast = astOpt.get();
+        System.out.println(ast.eval());
+//        assertTrue(ast.eval().value().map(v -> v==-1.0).orElse(false));
     }
 }
