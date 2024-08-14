@@ -6,6 +6,9 @@ import org.example.grammar.math.lex.NumToken;
 import org.example.grammar.math.lex.Token;
 import org.example.grammar.math.sem.Num;
 
+/**
+ * Абстрактный узел синтаксиса - число
+ */
 public class NumAst extends AstBase {
     private final NumToken numToken;
 

@@ -5,6 +5,9 @@ import org.example.grammar.math.sem.Num;
 
 import java.util.Optional;
 
+/**
+ * Лексема числа
+ */
 public class NumToken extends AbstractToken {
     public NumToken(Pointer.CharPointer begin, Pointer.CharPointer end, Num value) {
         super(begin, end);
@@ -14,6 +17,10 @@ public class NumToken extends AbstractToken {
 
     private final Num value;
 
+    /**
+     * Число
+     * @return число
+     */
     public Num value() {return value;}
 
     private static Optional<Integer> digitOf(Pointer.CharPointer ptr) {
@@ -55,6 +62,9 @@ public class NumToken extends AbstractToken {
         return Optional.of(new IntPart(sb.toString(), begin, ptr));
     }
 
+    /**
+     * Парсер лексемы
+     */
     public static final TokenParser parser = ptr -> {
         if (ptr.get().map(c -> c == '.').orElse(false)) {
             return intNumParse(ptr.move(1))

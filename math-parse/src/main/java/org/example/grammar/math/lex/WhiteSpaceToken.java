@@ -4,11 +4,17 @@ import org.example.grammar.math.Pointer;
 
 import java.util.Optional;
 
+/**
+ * Лексема пробельных символов
+ */
 public class WhiteSpaceToken extends AbstractToken {
     public WhiteSpaceToken(Pointer.CharPointer begin, Pointer.CharPointer end) {
         super(begin, end);
     }
 
+    /**
+     * Парсер лексемы
+     */
     public static final TokenParser parser = ptr ->
     {
         var ptrBegin = ptr;

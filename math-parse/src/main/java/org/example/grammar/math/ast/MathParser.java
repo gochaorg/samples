@@ -12,6 +12,9 @@ import org.example.grammar.math.lex.Token;
 
 import java.util.Optional;
 
+/**
+ * Парсер математических выражений
+ */
 public class MathParser {
     public static Optional<Ast> parse(Pointer.ListPointer<Token> ptr) {
         if (ptr == null) throw new IllegalArgumentException("ptr==null");

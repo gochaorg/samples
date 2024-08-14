@@ -4,6 +4,9 @@ import org.example.grammar.math.Pointer;
 
 import java.util.Optional;
 
+/**
+ * Лексема - Открывающая круглая скобка
+ */
 public class OpenParenthesesToken extends AbstractToken {
     public OpenParenthesesToken(Pointer.CharPointer begin, Pointer.CharPointer end) {
         super(begin, end);
