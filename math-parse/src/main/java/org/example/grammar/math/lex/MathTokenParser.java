@@ -39,6 +39,8 @@ public class MathTokenParser {
 
     public static Pointer.ListPointer<Token> tokenPointerOf(String source){
         var tokens = tokens(source);
-        return new Pointer.ListPointer<>(tokens, 0);
+        return new Pointer.ListPointer<>(
+            tokens.stream().filter(t -> !(t instanceof WhiteSpaceToken)).toList(),
+            0);
     }
 }
